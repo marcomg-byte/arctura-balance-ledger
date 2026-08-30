@@ -1,4 +1,4 @@
-package com.arctura.payment_bridge.interfaces.rest;
+package com.arctura.payment_bridge.interfaces.rest.accounts.controllers;
 
 import java.util.List;
 
@@ -17,6 +17,9 @@ import com.arctura.payment_bridge.domain.account.Account;
 import com.arctura.payment_bridge.domain.account.AccountRepository;
 import com.arctura.payment_bridge.domain.account.Balance;
 import com.arctura.payment_bridge.domain.shared.Money;
+import com.arctura.payment_bridge.interfaces.rest.accounts.requests.CreateAccountRequest;
+import com.arctura.payment_bridge.interfaces.rest.accounts.requests.UpdatePersonalInfoRequest;
+import com.arctura.payment_bridge.interfaces.rest.accounts.responses.AccountResponse;
 
 @RestController
 @RequestMapping("/accounts")

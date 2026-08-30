@@ -1,23 +1,35 @@
 # Payment Bridge
 
-Payment Bridge is a minimal Spring Boot RESTful API for handling financial
-transactions. The project follows a lightweight Domain-Driven Design approach
-so the business model stays separated from HTTP, persistence, and framework
-details.
+Payment Bridge is a Spring Boot REST API for managing accounts and financial
+transactions. The project follows a lightweight Domain-Driven Design approach:
+domain models stay free of framework annotations, while HTTP and persistence
+concerns live in their own infrastructure/interface layers.
 
-Although the project name includes "bridge", the application is intended to be
-a simple transaction API, not an integration bridge between payment providers.
+Although the project name includes "bridge", the current application is a
+simple account and transaction API, not an integration bridge between payment
+providers.
+
+## Current Stack
+
+- Java 26
+- Spring Boot 4.1.1
+- Spring Web
+- Spring Data JPA
+- Gradle
 
 ## Architecture
 
-The application is organized around DDD layers:
+The application is organized around these layers:
 
-- `domain`: core business concepts and rules.
-- `application`: use cases and orchestration.
-- `infrastructure`: technical details such as persistence and ORM mappings.
-- `interfaces`: external entry points such as REST controllers.
+- `domain`: business entities, value objects, enums, and repository contracts.
+- `infrastructure`: technical implementations, currently JPA persistence.
+- `interfaces`: external entry points, currently REST controllers and DTOs.
 
-The chosen package structure is:
+There is no separate `application` layer yet. Controllers currently call domain
+repository interfaces directly. As the project grows, use cases/services can be
+introduced between the REST layer and the domain repositories.
+
+## Project Structure
 
 ```text
 src/main/java/com/arctura/payment_bridge
@@ -38,9 +50,6 @@ src/main/java/com/arctura/payment_bridge
 │       ├── TransactionRepository.java
 │       └── TransactionType.java
 │
-├── application
-│   └── TransactionService.java
-│
 ├── infrastructure
 │   └── persistence
 │       └── jpa
@@ -48,57 +57,67 @@ src/main/java/com/arctura/payment_bridge
 │           │   ├── AccountEntity.java
 │           │   └── TransactionEntity.java
 │           │
-│           ├── repositories
-│           │   ├── JpaAccountRepository.java
-│           │   └── JpaTransactionRepository.java
+│           ├── mappers
+│           │   ├── AccountMapper.java
+│           │   └── TransactionMapper.java
 │           │
-│           └── mappers
-│               ├── AccountMapper.java
-│               └── TransactionMapper.java
+│           └── repositories
+│               ├── JpaAccountRepository.java
+│               └── JpaTransactionRepository.java
 │
 └── interfaces
     └── rest
-        ├── AccountController.java
-        ├── TransactionController.java
-        ├── CreateTransactionRequest.java
-        ├── UpdateTransactionRequest.java
-        └── TransactionResponse.java
+        ├── accounts
+        │   ├── controllers
+        │   │   └── AccountController.java
+        │   ├── requests
+        │   │   ├── CreateAccountRequest.java
+        │   │   └── UpdatePersonalInfoRequest.java
+        │   └── responses
+        │       └── AccountResponse.java
+        │
+        └── transactions
+            ├── controllers
+            │   └── TransactionController.java
+            ├── requests
+            │   ├── CreateTransactionRequest.java
+            │   └── UpdateTransactionRequest.java
+            └── responses
+                └── TransactionResponse.java
 ```
 
-Some of these packages represent the intended structure and may be added as the
-API grows.
+`PaymentBridgeApplication` is located in the root package
+`com.arctura.payment_bridge`, so Spring Boot automatically scans the domain,
+infrastructure, and interfaces subpackages. No custom `@ComponentScan` is
+currently required.
 
 ## Domain Model
 
 ### Account
 
-`Account` represents the owner of a balance. It is a domain entity, so it has an
-identity and owns business behavior related to balance changes.
+`Account` represents the owner of a balance. It has an identity, personal
+information, and domain behavior for changing the balance.
 
-Balance changes should be expressed through domain methods such as:
+Balance changes are expressed through domain methods:
 
 ```java
 account.increaseBalance(amount);
 account.decreaseBalance(amount);
 ```
 
-This avoids replacing the balance directly from outside the entity.
-
 ### Balance
 
-`Balance` represents the current monetary state of an account. It wraps a
-`Money` value and exposes operations such as increasing or decreasing the
-current amount.
+`Balance` wraps a `Money` value and represents the current monetary state of an
+account.
 
 ### Money
 
-`Money` is a shared domain value object. It combines:
+`Money` is a shared value object made of:
 
-- an amount, represented with `BigDecimal`
-- a currency, represented by `Currency`
+- `BigDecimal amount`
+- `Currency currency`
 
-`BigDecimal` is used instead of `double` because financial calculations require
-decimal precision.
+`BigDecimal` is used for financial precision.
 
 Example:
 
@@ -108,26 +127,28 @@ Money amount = new Money(new BigDecimal("100.00"), Currency.MXN);
 
 ### Currency
 
-`Currency` represents the monetary unit used by a `Money` value, such as `USD`,
-`MXN`, or `EUR`.
+`Currency` represents the monetary unit used by a `Money` value. Current values
+are `USD`, `MXN`, and `EUR`.
 
 ### Transaction
 
-`Transaction` represents a financial movement associated with an account. A
-minimal transaction includes:
+`Transaction` represents a financial movement associated with an account. It
+contains:
 
 - an id
 - an account id
 - a transaction type
 - a money amount
-- an optional description
+- a description
 - a creation timestamp
+
+New transactions use the constructor that assigns `createdAt` automatically.
+Persisted transactions can be rehydrated through the constructor that accepts
+the original `createdAt` value.
 
 ### TransactionType
 
-`TransactionType` describes the kind of transaction.
-
-Current examples:
+Current transaction types are:
 
 ```java
 INCOME
@@ -137,47 +158,127 @@ TRANSFER
 
 ## Persistence
 
-Domain classes should not contain JPA or Hibernate annotations.
-
-ORM-specific classes live under:
+Domain classes do not contain JPA annotations. Persistence-specific classes
+live under:
 
 ```text
 infrastructure/persistence/jpa
 ```
 
-The distinction is:
+The persistence layer contains:
 
-- `domain/.../Account.java`: business entity.
-- `infrastructure/persistence/jpa/entities/AccountEntity.java`: ORM entity.
-- `domain/.../Transaction.java`: business entity.
-- `infrastructure/persistence/jpa/entities/TransactionEntity.java`: ORM entity.
+- JPA entities for database mapping.
+- Mapper classes for converting between domain objects and JPA entities.
+- Repository adapters that implement the domain repository interfaces using
+  Spring Data JPA.
 
-Mappers convert between domain objects and persistence entities.
+For example:
+
+- `domain/account/Account.java` is the business entity.
+- `infrastructure/persistence/jpa/entities/AccountEntity.java` is the JPA
+  entity.
+- `AccountMapper` converts between both representations.
+- `JpaAccountRepository` implements the domain `AccountRepository`.
 
 ## REST API
 
-The intended minimal REST API is:
+### Accounts
 
 ```text
-GET    /transactions
-GET    /transactions/{id}
+POST   /accounts
+GET    /accounts
+GET    /accounts?name={name}
+GET    /accounts/{id}
+PATCH  /accounts/{id}/personal-info
+DELETE /accounts/{id}
+```
+
+`POST /accounts` accepts:
+
+```json
+{
+  "id": "acc-1",
+  "name": "Marco",
+  "paternalSurname": "Doe",
+  "maternalSurname": "Smith",
+  "balanceAmount": 1000.00,
+  "balanceCurrency": "MXN"
+}
+```
+
+`PATCH /accounts/{id}/personal-info` accepts:
+
+```json
+{
+  "name": "Marco",
+  "paternalSurname": "Doe",
+  "maternalSurname": "Smith"
+}
+```
+
+### Transactions
+
+```text
 POST   /transactions
-PUT    /transactions/{id}
+GET    /transactions
+GET    /transactions?accountId={accountId}
+GET    /transactions/{id}
+PATCH  /transactions/{id}
 DELETE /transactions/{id}
 ```
 
-Account endpoints may be added if account data becomes part of the public API.
+`POST /transactions` accepts:
+
+```json
+{
+  "id": "txn-1",
+  "accountId": "acc-1",
+  "type": "INCOME",
+  "amount": 250.00,
+  "currency": "MXN",
+  "description": "Initial deposit"
+}
+```
+
+`PATCH /transactions/{id}` accepts:
+
+```json
+{
+  "type": "EXPENSE",
+  "amount": 50.00,
+  "currency": "MXN",
+  "description": "Updated description"
+}
+```
+
+## Configuration
+
+The application currently defines only:
+
+```properties
+spring.application.name=payment_bridge
+```
+
+Because Spring Data JPA is enabled, running the full application or context
+tests will require datasource configuration, such as an embedded database for
+local development or a real database connection.
 
 ## Development
 
-Run the application:
+Compile the project:
 
 ```bash
-./gradlew bootRun
+./gradlew compileJava
 ```
 
 Run tests:
 
 ```bash
 ./gradlew test
+```
+
+Run the application:
+
+```bash
+./gradlew bootRun
 ```

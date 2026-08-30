@@ -1,4 +1,4 @@
-package com.arctura.payment_bridge.interfaces.rest;
+package com.arctura.payment_bridge.interfaces.rest.transactions.requests;
 
 import java.math.BigDecimal;
 
