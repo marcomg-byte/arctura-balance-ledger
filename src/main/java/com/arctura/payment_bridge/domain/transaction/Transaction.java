@@ -17,6 +17,17 @@ public class Transaction {
     Money amount,
     String description
   ) {
+    this(id, accountId, type, amount, description, LocalDateTime.now());
+  }
+
+  public Transaction(
+    String id,
+    String accountId,
+    TransactionType type,
+    Money amount,
+    String description,
+    LocalDateTime createdAt
+  ) {
     if (id == null || id.isBlank()) {
       throw new IllegalArgumentException("Transaction id is required");
     }
@@ -33,12 +44,16 @@ public class Transaction {
       throw new IllegalArgumentException("Transaction amount is required");
     }
 
+    if (createdAt == null) {
+      throw new IllegalArgumentException("Transaction creation date is required");
+    }
+
     this.id = id;
     this.accountId = accountId;
     this.type = type;
     this.amount = amount;
     this.description = description;
-    this.createdAt = LocalDateTime.now();
+    this.createdAt = createdAt;
   }
 
   public void update(TransactionType type, Money amount, String description) {
