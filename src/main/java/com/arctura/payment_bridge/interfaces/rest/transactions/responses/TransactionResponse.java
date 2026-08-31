@@ -2,6 +2,7 @@ package com.arctura.payment_bridge.interfaces.rest.transactions.responses;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import com.arctura.payment_bridge.domain.shared.Currency;
 import com.arctura.payment_bridge.domain.shared.Money;
@@ -9,8 +10,8 @@ import com.arctura.payment_bridge.domain.transaction.Transaction;
 import com.arctura.payment_bridge.domain.transaction.TransactionType;
 
 public record TransactionResponse(
-  String id,
-  String accountId,
+  UUID id,
+  UUID accountId,
   TransactionType type,
   BigDecimal amount,
   Currency currency,

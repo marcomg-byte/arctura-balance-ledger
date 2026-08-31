@@ -1,6 +1,7 @@
 package com.arctura.payment_bridge.interfaces.rest.accounts.controllers;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -36,7 +37,7 @@ public class AccountController {
       request.name(),
       request.paternalSurname(),
       request.maternalSurname(),
-      request.id(),
+      UUID.randomUUID(),
       new Balance(new Money(request.balanceAmount(), request.balanceCurrency()))
     );
 
@@ -44,7 +45,7 @@ public class AccountController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<AccountResponse> findById(@PathVariable String id) {
+  public ResponseEntity<AccountResponse> findById(@PathVariable UUID id) {
       return this.accountRepository.findById(id)
         .map(AccountResponse::from)
         .map(ResponseEntity::ok)
@@ -64,7 +65,7 @@ public class AccountController {
   
   @PatchMapping("/{id}/personal-info")
   public ResponseEntity<AccountResponse> updatePersonalInfo(
-    @PathVariable String id,
+    @PathVariable UUID id,
     @RequestBody UpdatePersonalInfoRequest request
   ) {
     return this.accountRepository.findById(id)
@@ -82,7 +83,7 @@ public class AccountController {
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deleteById(@PathVariable String id) {
+  public ResponseEntity<Void> deleteById(@PathVariable UUID id) {
     if (!this.accountRepository.existsById(id)) {
       return ResponseEntity.notFound().build();
     }

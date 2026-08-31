@@ -1,13 +1,14 @@
 package com.arctura.payment_bridge.interfaces.rest.accounts.responses;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import com.arctura.payment_bridge.domain.account.Account;
 import com.arctura.payment_bridge.domain.shared.Currency;
 import com.arctura.payment_bridge.domain.shared.Money;
 
 public record AccountResponse(
-  String id,
+  UUID id,
   String name,
   String paternalSurname,
   String maternalSurname,

@@ -1,6 +1,7 @@
 package com.arctura.payment_bridge.interfaces.rest.transactions.controllers;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,7 +33,7 @@ public class TransactionController {
   @PostMapping
   public TransactionResponse create(@RequestBody CreateTransactionRequest request) {
     Transaction transaction = new Transaction(
-      request.id(),
+      UUID.randomUUID(),
       request.accountId(),
       request.type(),
       new Money(request.amount(), request.currency()),
@@ -43,7 +44,7 @@ public class TransactionController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<TransactionResponse> findById(@PathVariable String id) {
+  public ResponseEntity<TransactionResponse> findById(@PathVariable UUID id) {
       return this.transactionRepository.findById(id)
         .map(TransactionResponse::from)
         .map(ResponseEntity::ok)
@@ -51,8 +52,8 @@ public class TransactionController {
   }
   
   @GetMapping
-  public List<TransactionResponse> findAll(@RequestParam(required = false) String accountId) {
-    List<Transaction> transactions = accountId == null || accountId.isBlank()
+  public List<TransactionResponse> findAll(@RequestParam(required = false) UUID accountId) {
+    List<Transaction> transactions = accountId == null
       ? this.transactionRepository.findAll()
       : this.transactionRepository.findByAccountId(accountId);
 
@@ -63,7 +64,7 @@ public class TransactionController {
 
   @PatchMapping("/{id}")
   public ResponseEntity<TransactionResponse> update(
-    @PathVariable String id,
+    @PathVariable UUID id,
     @RequestBody UpdateTransactionRequest request
   ) {
     return this.transactionRepository.findById(id)
@@ -81,7 +82,7 @@ public class TransactionController {
   }
   
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deleteById(@PathVariable String id) {
+  public ResponseEntity<Void> deleteById(@PathVariable UUID id) {
     if (!this.transactionRepository.existsById(id)) {
       return ResponseEntity.notFound().build();
     }

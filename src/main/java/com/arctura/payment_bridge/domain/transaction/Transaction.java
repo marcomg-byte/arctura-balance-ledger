@@ -1,18 +1,20 @@
 package com.arctura.payment_bridge.domain.transaction;
 import java.time.LocalDateTime;
+import java.util.UUID;
+
 import com.arctura.payment_bridge.domain.shared.Money;
 
 public class Transaction {
-  private final String id;
-  private final String accountId;
+  private final UUID id;
+  private final UUID accountId;
   private TransactionType type;
   private Money amount;
   private String description;
   private final LocalDateTime createdAt;
 
   public Transaction(
-    String id,
-    String accountId,
+    UUID id,
+    UUID accountId,
     TransactionType type,
     Money amount,
     String description
@@ -21,18 +23,18 @@ public class Transaction {
   }
 
   public Transaction(
-    String id,
-    String accountId,
+    UUID id,
+    UUID accountId,
     TransactionType type,
     Money amount,
     String description,
     LocalDateTime createdAt
   ) {
-    if (id == null || id.isBlank()) {
+    if (id == null) {
       throw new IllegalArgumentException("Transaction id is required");
     }
 
-    if (accountId == null || accountId.isBlank()) {
+    if (accountId == null) {
       throw new IllegalArgumentException("Account id is required");
     }
 
@@ -70,11 +72,11 @@ public class Transaction {
     this.description = description;
   }
 
-  public String getId() {
+  public UUID getId() {
     return id;
   }
 
-  public String getAccountId() {
+  public UUID getAccountId() {
     return accountId;
   }
 
