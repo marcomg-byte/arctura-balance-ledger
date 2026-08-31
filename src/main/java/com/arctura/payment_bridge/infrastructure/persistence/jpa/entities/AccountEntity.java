@@ -1,6 +1,10 @@
 package com.arctura.payment_bridge.infrastructure.persistence.jpa.entities;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.math.BigDecimal;
+import java.util.UUID;
+
 import com.arctura.payment_bridge.domain.shared.Currency;
 
 import jakarta.persistence.Column;
@@ -8,6 +12,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 @Entity
@@ -15,27 +20,30 @@ import jakarta.persistence.Table;
 public class AccountEntity {
   @Id
   @Column(nullable = false, updatable = false)
-  private String id;
+  private UUID id;
   
   @Column(nullable = false)
   private String name;
 
-  @Column(nullable = false)
+  @Column(nullable = false, name = "paternal_surname")
   private String paternalSurname;
 
-  @Column(nullable = false)
+  @Column(nullable = false, name = "maternal_surname")
   private String maternalSurname;
 
-  @Column(nullable = false, precision = 19, scale = 2)
+  @Column(nullable = false, precision = 19, scale = 2, name = "balance_amount")
   private BigDecimal balanceAmount;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @Column(nullable = false, name = "balance_currency")
   private Currency balanceCurrency;
+
+  @OneToMany(mappedBy = "account")
+  private List<TransactionEntity> transactions = new ArrayList<>();
 
   protected AccountEntity () {}
   public AccountEntity(
-    String id,
+    UUID id,
     String name,
     String paternalSurname,
     String maternalSurname,
@@ -50,7 +58,7 @@ public class AccountEntity {
     this.balanceCurrency = balanceCurrency;
   }
 
-  public String getId() {
+  public UUID getId() {
     return id;
   }
 
@@ -92,5 +100,9 @@ public class AccountEntity {
 
   public void setBalanceCurrency(Currency balanceCurrency) {
     this.balanceCurrency = balanceCurrency;
+  }
+
+  public List<TransactionEntity> getTransactions() {
+    return transactions;
   }
 }

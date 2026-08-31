@@ -2,6 +2,7 @@ package com.arctura.payment_bridge.infrastructure.persistence.jpa.repositories;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -11,7 +12,7 @@ import com.arctura.payment_bridge.domain.account.AccountRepository;
 import com.arctura.payment_bridge.infrastructure.persistence.jpa.entities.AccountEntity;
 import com.arctura.payment_bridge.infrastructure.persistence.jpa.mappers.AccountMapper;
 
-interface SpringDataAccountRepository extends JpaRepository<AccountEntity, String> {
+interface SpringDataAccountRepository extends JpaRepository<AccountEntity, UUID> {
   List<AccountEntity> findByName(String name);
 }
 
@@ -31,7 +32,7 @@ public class JpaAccountRepository implements AccountRepository {
   }
 
   @Override
-  public Optional<Account> findById(String id) {
+  public Optional<Account> findById(UUID id) {
     return repository.findById(id).map(this.mapper::toDomain);
   }
 
@@ -44,12 +45,12 @@ public class JpaAccountRepository implements AccountRepository {
   }
 
   @Override
-  public boolean existsById(String id) {
+  public boolean existsById(UUID id) {
     return repository.existsById(id);
   }
 
   @Override
-  public void deleteById(String id) {
+  public void deleteById(UUID id) {
     repository.deleteById(id);
   }
 

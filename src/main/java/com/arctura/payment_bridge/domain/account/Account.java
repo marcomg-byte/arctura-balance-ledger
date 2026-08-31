@@ -1,15 +1,17 @@
 package com.arctura.payment_bridge.domain.account;
+import java.util.UUID;
+
 import com.arctura.payment_bridge.domain.shared.Money;
 
 public class Account {
   private String name;
   private String paternalSurname;
   private String maternalSurname;
-  private String id;
+  private UUID id;
   private Balance balance;
 
-  public Account(String name, String paternalSurname, String maternalSurname, String id, Balance balance) {
-    if (id == null || id.isBlank()) {
+  public Account(String name, String paternalSurname, String maternalSurname, UUID id, Balance balance) {
+    if (id == null) {
       throw new IllegalArgumentException("Account id is required");
     }
 
@@ -48,7 +50,7 @@ public class Account {
     return maternalSurname;
   }
 
-  public String getId() {
+  public UUID getId() {
     return id;
   }
 
