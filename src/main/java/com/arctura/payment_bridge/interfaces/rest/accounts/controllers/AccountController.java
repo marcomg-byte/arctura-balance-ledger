@@ -1,5 +1,6 @@
 package com.arctura.payment_bridge.interfaces.rest.accounts.controllers;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,10 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 import com.arctura.payment_bridge.domain.account.Account;
 import com.arctura.payment_bridge.domain.account.AccountRepository;
 import com.arctura.payment_bridge.domain.account.Balance;
+import com.arctura.payment_bridge.domain.exception.AccountNotFoundException;
 import com.arctura.payment_bridge.domain.shared.Money;
 import com.arctura.payment_bridge.interfaces.rest.accounts.requests.CreateAccountRequest;
 import com.arctura.payment_bridge.interfaces.rest.accounts.requests.UpdatePersonalInfoRequest;
 import com.arctura.payment_bridge.interfaces.rest.accounts.responses.AccountResponse;
+import com.arctura.payment_bridge.interfaces.rest.exception.request.InvalidAccountIdException;
+import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingRequestBodyException;
+import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingRequestBodyPropsException;
 
 @RestController
 @RequestMapping("/accounts")
@@ -32,7 +37,9 @@ public class AccountController {
   }
 
   @PostMapping
-  public AccountResponse create(@RequestBody CreateAccountRequest request) {
+  public AccountResponse create(@RequestBody(required = false) CreateAccountRequest request) {
+    validateCreateRequest(request);
+
     Account account = new Account(
       request.name(),
       request.paternalSurname(),
@@ -45,11 +52,12 @@ public class AccountController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<AccountResponse> findById(@PathVariable UUID id) {
-      return this.accountRepository.findById(id)
-        .map(AccountResponse::from)
-        .map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+  public AccountResponse findById(@PathVariable String id) {
+    UUID accountId = parseAccountId(id);
+
+    return this.accountRepository.findById(accountId)
+      .map(AccountResponse::from)
+      .orElseThrow(AccountNotFoundException::new);
   }
 
   @GetMapping
@@ -64,31 +72,89 @@ public class AccountController {
   }
   
   @PatchMapping("/{id}/personal-info")
-  public ResponseEntity<AccountResponse> updatePersonalInfo(
-    @PathVariable UUID id,
-    @RequestBody UpdatePersonalInfoRequest request
+  public AccountResponse updatePersonalInfo(
+    @PathVariable String id,
+    @RequestBody(required = false) UpdatePersonalInfoRequest request
   ) {
-    return this.accountRepository.findById(id)
-      .map(account -> {
-        account.updatePersonalInfo(
-          request.name(),
-          request.paternalSurname(),
-          request.maternalSurname()
-        );
+    UUID accountId = parseAccountId(id);
+    validateUpdateRequest(request);
 
-        return AccountResponse.from(this.accountRepository.save(account));
-      })
-      .map(ResponseEntity::ok)
-      .orElse(ResponseEntity.notFound().build());
+    Account account = this.accountRepository.findById(accountId)
+      .orElseThrow(AccountNotFoundException::new);
+
+    account.updatePersonalInfo(
+      request.name(),
+      request.paternalSurname(),
+      request.maternalSurname()
+    );
+
+    return AccountResponse.from(this.accountRepository.save(account));
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deleteById(@PathVariable UUID id) {
-    if (!this.accountRepository.existsById(id)) {
-      return ResponseEntity.notFound().build();
+  public ResponseEntity<Void> deleteById(@PathVariable String id) {
+    UUID accountId = parseAccountId(id);
+
+    if (!this.accountRepository.existsById(accountId)) {
+      throw new AccountNotFoundException();
     }
 
-    this.accountRepository.deleteById(id);
+    this.accountRepository.deleteById(accountId);
     return ResponseEntity.noContent().build();
+  }
+
+  private UUID parseAccountId(String id) {
+    try {
+      return UUID.fromString(id);
+    } catch (IllegalArgumentException exception) {
+      throw new InvalidAccountIdException(id);
+    }
+  }
+
+  private void validateCreateRequest(CreateAccountRequest request) {
+    if (request == null) {
+      throw new MissingRequestBodyException();
+    }
+
+    List<String> missingProps = new ArrayList<>();
+
+    addIfBlank(missingProps, request.name(), "name");
+    addIfBlank(missingProps, request.paternalSurname(), "paternalSurname");
+    addIfBlank(missingProps, request.maternalSurname(), "maternalSurname");
+
+    if (request.balanceAmount() == null) {
+      missingProps.add("balanceAmount");
+    }
+
+    if (request.balanceCurrency() == null) {
+      missingProps.add("balanceCurrency");
+    }
+
+    throwIfMissingProps(missingProps);
+  }
+
+  private void validateUpdateRequest(UpdatePersonalInfoRequest request) {
+    if (request == null) {
+      throw new MissingRequestBodyException();
+    }
+
+    List<String> missingProps = new ArrayList<>();
+
+    addIfBlank(missingProps, request.name(), "name");
+    addIfBlank(missingProps, request.paternalSurname(), "paternalSurname");
+    addIfBlank(missingProps, request.maternalSurname(), "maternalSurname");
+    throwIfMissingProps(missingProps);
+  }
+
+  private void addIfBlank(List<String> missingProps, String value, String propName) {
+    if (value == null || value.isBlank()) {
+      missingProps.add(propName);
+    }
+  }
+
+  private void throwIfMissingProps(List<String> missingProps) {
+    if (!missingProps.isEmpty()) {
+      throw new MissingRequestBodyPropsException(missingProps.toArray(String[]::new));
+    }
   }
 }

@@ -2,6 +2,7 @@ package com.arctura.payment_bridge.domain.transaction;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.arctura.payment_bridge.domain.exception.DomainValidationException;
 import com.arctura.payment_bridge.domain.shared.Money;
 
 public class Transaction {
@@ -31,23 +32,23 @@ public class Transaction {
     LocalDateTime createdAt
   ) {
     if (id == null) {
-      throw new IllegalArgumentException("Transaction id is required");
+      throw new DomainValidationException("Transaction id is required");
     }
 
     if (accountId == null) {
-      throw new IllegalArgumentException("Account id is required");
+      throw new DomainValidationException("Account id is required");
     }
 
     if (type == null) {
-      throw new IllegalArgumentException("Transaction type is required");
+      throw new DomainValidationException("Transaction type is required");
     }
 
     if (amount == null) {
-      throw new IllegalArgumentException("Transaction amount is required");
+      throw new DomainValidationException("Transaction amount is required");
     }
 
     if (createdAt == null) {
-      throw new IllegalArgumentException("Transaction creation date is required");
+      throw new DomainValidationException("Transaction creation date is required");
     }
 
     this.id = id;
@@ -60,11 +61,11 @@ public class Transaction {
 
   public void update(TransactionType type, Money amount, String description) {
     if (type == null) {
-      throw new IllegalArgumentException("Transaction type is required");
+      throw new DomainValidationException("Transaction type is required");
     }
 
     if (amount == null) {
-      throw new IllegalArgumentException("Transaction amount is required");
+      throw new DomainValidationException("Transaction amount is required");
     }
 
     this.type = type;

@@ -4,9 +4,7 @@ public class MissingQueryParamsException extends RequestException {
     private static final String CODE = "MISSING_QUERY_PARAMS";
 
     public MissingQueryParamsException(String... params) {
-        String message = buildMessage(params);
-        String paramsList = String.join(",", params);
-        super(CODE, message, paramsList);
+        super(CODE, buildMessage(params), buildDetail(params));
     }
 
     private static String buildMessage(String... params) {
@@ -17,5 +15,9 @@ public class MissingQueryParamsException extends RequestException {
             return "Required query parameter '" + params[0] + "' is missing";
         }
         return "Required query parameters " + String.join(", ", params) + " are missing";
+    }
+
+    private static String buildDetail(String... params) {
+        return params == null ? "" : String.join(",", params);
     }
 }

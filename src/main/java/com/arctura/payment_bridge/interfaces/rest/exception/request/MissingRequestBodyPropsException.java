@@ -4,9 +4,7 @@ public class MissingRequestBodyPropsException extends RequestException {
     private static final String CODE = "MISSING_REQUEST_BODY_PROPS";
 
     public MissingRequestBodyPropsException(String... missingProps) {
-      String message = buildMessage(missingProps);
-      String propsList = String.join(",", missingProps);
-      super(CODE, message, propsList);
+      super(CODE, buildMessage(missingProps), buildDetail(missingProps));
     }
 
     private static String buildMessage(String... missingProps) {
@@ -17,5 +15,9 @@ public class MissingRequestBodyPropsException extends RequestException {
             return "Required request body property '" + missingProps[0] + "' is missing";
         }
         return "Required request body properties " + String.join(", ", missingProps) + " are missing";
+    }
+
+    private static String buildDetail(String... missingProps) {
+        return missingProps == null ? "" : String.join(",", missingProps);
     }
 }

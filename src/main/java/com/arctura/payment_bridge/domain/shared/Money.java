@@ -2,17 +2,19 @@ package com.arctura.payment_bridge.domain.shared;
 import java.math.BigDecimal;
 import java.util.Objects;
 
+import com.arctura.payment_bridge.domain.exception.DomainValidationException;
+
 public class Money {
   private final BigDecimal amount;
   private final Currency currency;
 
   public Money(BigDecimal amount, Currency currency) {
     if (amount == null) {
-      throw new IllegalArgumentException("Amount is required");
+      throw new DomainValidationException("Amount is required");
     }
 
     if (currency == null) {
-      throw new IllegalArgumentException("Currency is required");
+      throw new DomainValidationException("Currency is required");
     }
 
     this.amount = amount;
@@ -28,6 +30,11 @@ public class Money {
     this.validateSameCurrency(newAmount);
     return new Money(this.amount.subtract(newAmount.amount), this.currency);
   }
+
+  public boolean isGreaterThan(Money value) {
+    this.validateSameCurrency(value);
+    return this.amount.compareTo(value.amount) > 0;
+  }
   
   public BigDecimal getAmount() {
     return amount;
@@ -39,11 +46,11 @@ public class Money {
 
   private void validateSameCurrency(Money value) {
     if (value == null) {
-      throw new IllegalArgumentException("A Money value is required");
+      throw new DomainValidationException("A Money value is required");
     }
 
     if (this.currency != value.currency) {
-      throw new IllegalArgumentException("Money currency must match");
+      throw new DomainValidationException("Money currency must match");
     }
   }
 
