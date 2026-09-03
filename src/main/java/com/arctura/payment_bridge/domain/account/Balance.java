@@ -1,10 +1,16 @@
 package com.arctura.payment_bridge.domain.account;
+import com.arctura.payment_bridge.domain.exception.DomainValidationException;
+import com.arctura.payment_bridge.domain.exception.InsufficientFundsException;
 import com.arctura.payment_bridge.domain.shared.Money;
 
 public class Balance {
   private final Money amount;
 
   public Balance(Money amount) {
+    if (amount == null) {
+      throw new DomainValidationException("Balance amount is required");
+    }
+
     this.amount = amount;
   }
 
@@ -13,6 +19,14 @@ public class Balance {
   }
 
   public Balance decreaseBy(Money money) {
+    if (money == null) {
+      throw new DomainValidationException("A Money value is required");
+    }
+
+    if (money.isGreaterThan(this.amount)) {
+      throw new InsufficientFundsException();
+    }
+
     return new Balance(this.amount.subtract(money));
   }
 

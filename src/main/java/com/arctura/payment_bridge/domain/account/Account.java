@@ -1,6 +1,7 @@
 package com.arctura.payment_bridge.domain.account;
 import java.util.UUID;
 
+import com.arctura.payment_bridge.domain.exception.DomainValidationException;
 import com.arctura.payment_bridge.domain.shared.Money;
 
 public class Account {
@@ -12,11 +13,11 @@ public class Account {
 
   public Account(String name, String paternalSurname, String maternalSurname, UUID id, Balance balance) {
     if (id == null) {
-      throw new IllegalArgumentException("Account id is required");
+      throw new DomainValidationException("Account id is required");
     }
 
     if (balance == null) {
-      throw new IllegalArgumentException("Balance is required");
+      throw new DomainValidationException("Balance is required");
     }
 
     this.balance = balance;
