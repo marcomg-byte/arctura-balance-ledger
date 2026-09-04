@@ -1,11 +1,11 @@
 package com.arctura.payment_bridge.interfaces.rest.transactions.controllers;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.arctura.payment_bridge.application.transactions.CancelTransactionService;
 import com.arctura.payment_bridge.application.transactions.RecordTransactionCommand;
 import com.arctura.payment_bridge.application.transactions.RecordTransactionService;
 import com.arctura.payment_bridge.domain.account.AccountRepository;
@@ -38,15 +39,18 @@ public class TransactionController {
   private final TransactionRepository transactionRepository;
   private final AccountRepository accountRepository;
   private final RecordTransactionService recordTransactionService;
+  private final CancelTransactionService cancelTransactionService;
 
   public TransactionController(
     TransactionRepository transactionRepository,
     AccountRepository accountRepository,
-    RecordTransactionService recordTransactionService
+    RecordTransactionService recordTransactionService,
+    CancelTransactionService cancelTransactionService
   ) {
     this.transactionRepository = transactionRepository;
     this.accountRepository = accountRepository;
     this.recordTransactionService = recordTransactionService;
+    this.cancelTransactionService = cancelTransactionService;
   }
 
   @PostMapping
@@ -110,16 +114,15 @@ public class TransactionController {
     return TransactionResponse.from(this.transactionRepository.save(transaction));
   }
   
-  @DeleteMapping("/{id}")
-  public ResponseEntity<Void> deleteById(@PathVariable String id) {
+  @PostMapping("/{id}/cancel")
+  public ResponseEntity<TransactionResponse> cancelById(@PathVariable String id) {
     UUID transactionId = parseTransactionId(id);
 
-    if (!this.transactionRepository.existsById(transactionId)) {
-      throw new TransactionNotFoundException();
-    }
+    Transaction cancellation = this.cancelTransactionService.cancel(transactionId);
 
-    this.transactionRepository.deleteById(transactionId);
-    return ResponseEntity.noContent().build();
+    return ResponseEntity
+      .created(URI.create("/transactions/" + cancellation.getId()))
+      .body(TransactionResponse.from(cancellation));
   }
 
   private UUID parseAccountId(String id) {

@@ -17,6 +17,8 @@ interface SpringDataTransactionRepository extends JpaRepository<TransactionEntit
     UUID accountId,
     UUID destinationAccountId
   );
+
+  boolean existsByCancelledTransaction_Id(UUID cancelledTransactionId);
 }
 
 @Repository
@@ -64,7 +66,7 @@ public class JpaTransactionRepository implements TransactionRepository {
   }
 
   @Override
-  public void deleteById(UUID id) {
-    repository.deleteById(id);
+  public boolean existsByCancelledTransactionId(UUID cancelledTransactionId) {
+    return repository.existsByCancelledTransaction_Id(cancelledTransactionId);
   }
 }

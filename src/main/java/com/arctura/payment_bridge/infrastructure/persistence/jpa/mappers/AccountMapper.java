@@ -18,7 +18,8 @@ public class AccountMapper {
       account.getPaternalSurname(),
       account.getMaternalSurname(),
       balance.getAmount(),
-      balance.getCurrency()
+      balance.getCurrency(),
+      account.getDeletedAt()
     );
   }
 
@@ -31,7 +32,8 @@ public class AccountMapper {
       entity.getPaternalSurname(),
       entity.getMaternalSurname(),
       entity.getId(),
-      balance
+      balance,
+      entity.getDeletedAt()
     );
   }
 }

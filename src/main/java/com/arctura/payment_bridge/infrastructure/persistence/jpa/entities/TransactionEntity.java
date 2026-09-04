@@ -32,6 +32,10 @@ public class TransactionEntity {
   @JoinColumn(name = "destination_account_id")
   private AccountEntity destinationAccount;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "cancelled_transaction_id")
+  private TransactionEntity cancelledTransaction;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private TransactionType type;
@@ -55,6 +59,7 @@ public class TransactionEntity {
     UUID id,
     AccountEntity account,
     AccountEntity destinationAccount,
+    TransactionEntity cancelledTransaction,
     TransactionType type,
     BigDecimal amount,
     Currency currency,
@@ -64,6 +69,7 @@ public class TransactionEntity {
     this.id = id;
     this.account = account;
     this.destinationAccount = destinationAccount;
+    this.cancelledTransaction = cancelledTransaction;
     this.type = type;
     this.amount = amount;
     this.currency = currency;
@@ -81,6 +87,10 @@ public class TransactionEntity {
 
   public UUID getDestinationAccountId() {
     return destinationAccount == null ? null : destinationAccount.getId();
+  }
+
+  public UUID getCancelledTransactionId() {
+    return cancelledTransaction == null ? null : cancelledTransaction.getId();
   }
 
   public TransactionType getType() {

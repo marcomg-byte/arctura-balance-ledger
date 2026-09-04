@@ -9,5 +9,5 @@ public interface TransactionRepository {
   List<Transaction> findAll();
   List<Transaction> findByAccountId(UUID accountId);
   boolean existsById(UUID id);
-  void deleteById(UUID id);
+  boolean existsByCancelledTransactionId(UUID cancelledTransactionId);
 }

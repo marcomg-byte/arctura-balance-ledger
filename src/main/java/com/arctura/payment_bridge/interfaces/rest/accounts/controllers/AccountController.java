@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.arctura.payment_bridge.application.accounts.DeleteAccountService;
 import com.arctura.payment_bridge.domain.account.Account;
 import com.arctura.payment_bridge.domain.account.AccountRepository;
 import com.arctura.payment_bridge.domain.account.Balance;
@@ -31,9 +32,11 @@ import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingReque
 @RequestMapping("/accounts")
 public class AccountController {
   private final AccountRepository accountRepository;
+  private final DeleteAccountService deleteAccountService;
 
-  public AccountController(AccountRepository accountRepository) {
+  public AccountController(AccountRepository accountRepository, DeleteAccountService deleteAccountService) {
     this.accountRepository = accountRepository;
+    this.deleteAccountService = deleteAccountService;
   }
 
   @PostMapping
@@ -95,11 +98,8 @@ public class AccountController {
   public ResponseEntity<Void> deleteById(@PathVariable String id) {
     UUID accountId = parseAccountId(id);
 
-    if (!this.accountRepository.existsById(accountId)) {
-      throw new AccountNotFoundException();
-    }
+    this.deleteAccountService.delete(accountId);
 
-    this.accountRepository.deleteById(accountId);
     return ResponseEntity.noContent().build();
   }
 
