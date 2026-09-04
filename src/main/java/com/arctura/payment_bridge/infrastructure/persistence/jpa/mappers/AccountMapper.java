@@ -7,8 +7,21 @@ import com.arctura.payment_bridge.domain.account.Balance;
 import com.arctura.payment_bridge.domain.shared.Money;
 import com.arctura.payment_bridge.infrastructure.persistence.jpa.entities.AccountEntity;
 
+/**
+ * Converts accounts between the persistence entity shape and the domain
+ * aggregate shape used by application services.
+ *
+ * <p>The mapper keeps JPA annotations and column details out of the domain
+ * model while preserving balance and soft-deletion state.</p>
+ */
 @Component
 public class AccountMapper {
+  /**
+   * Converts a domain account into a JPA entity ready for persistence.
+   *
+   * @param account domain aggregate to convert
+   * @return account entity containing persisted field values
+   */
   public AccountEntity toEntity(Account account) {
     Money balance = account.getBalance().getAmount();
     
@@ -23,6 +36,12 @@ public class AccountMapper {
     );
   }
 
+  /**
+   * Converts a JPA account entity into a domain aggregate.
+   *
+   * @param entity persisted account entity to convert
+   * @return domain account aggregate
+   */
   public Account toDomain(AccountEntity entity) {
     Money money = new Money(entity.getBalanceAmount(), entity.getBalanceCurrency());
     Balance balance = new Balance(money);

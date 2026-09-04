@@ -4,17 +4,21 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.Instant;
 
 /**
- * Uniform JSON payload returned for any exception handled by
- * {@link com.arctura.payment_bridge.interfaces.rest.exception.GlobalExceptionHandler}.
+ * Uniform JSON payload returned for exceptions handled by the REST exception
+ * layer.
  *
- * Fields:
- *  • timestamp      – when the error occurred (ISO‑8601 string)
- *  • status         – HTTP status code (e.g. 400, 404, 409, 503)
- *  • error          – standard reason phrase for the status
- *  • message        – human‑readable description (exception message)
- *  • path           – request URI that caused the error
- *  • errorCode      – application‑specific code (e.g. ACCOUNT_NOT_FOUND)
- *  • correlationId  – request‑scoped ID from {@code X‑Correlation‑Id}
+ * <p>Every handled error response includes a timestamp, HTTP status metadata, a
+ * human-readable message, a stable application error code, and the request
+ * correlation id when one is available.</p>
+ *
+ * @param timestamp instant when the error response was created
+ * @param status HTTP status code
+ * @param error HTTP reason phrase
+ * @param message human-readable error description
+ * @param path request path that caused the error
+ * @param errorCode stable application-specific error code
+ * @param correlationId request-scoped correlation id from
+ *                      {@code X-Correlation-Id}
  */
 public record ErrorResponse(
         @JsonFormat(shape = JsonFormat.Shape.STRING) Instant timestamp,

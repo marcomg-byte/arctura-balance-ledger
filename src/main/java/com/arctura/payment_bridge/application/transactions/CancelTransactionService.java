@@ -15,11 +15,28 @@ import com.arctura.payment_bridge.domain.transaction.Transaction;
 import com.arctura.payment_bridge.domain.transaction.TransactionRepository;
 import com.arctura.payment_bridge.domain.transaction.TransactionType;
 
+/**
+ * Application service for transaction cancellation workflows.
+ *
+ * <p>Cancellation is modeled as a new ledger transaction rather than mutating or
+ * deleting the original entry. The original balance impact is reversed inside a
+ * transaction and the cancellation record points back to the cancelled
+ * transaction for auditability.</p>
+ */
 @Service
 public class CancelTransactionService {
   private final AccountRepository accountRepository;
   private final TransactionRepository transactionRepository;
 
+  /**
+   * Creates the cancellation service with the domain repository ports required
+   * to load accounts and transactions.
+   *
+   * @param accountRepository repository used to load and persist affected
+   *                          accounts
+   * @param transactionRepository repository used to load, validate, and persist
+   *                              transaction records
+   */
   public CancelTransactionService(
     AccountRepository accountRepository,
     TransactionRepository transactionRepository
@@ -28,6 +45,19 @@ public class CancelTransactionService {
     this.transactionRepository = transactionRepository;
   }
 
+  /**
+   * Cancels an existing transaction and returns the generated cancellation
+   * transaction.
+   *
+   * @param transactionId identifier of the original transaction to cancel
+   * @return persisted cancellation transaction
+   * @throws TransactionNotFoundException when the original transaction does not
+   *                                      exist
+   * @throws DomainValidationException when the supplied transaction is itself a
+   *                                   cancellation
+   * @throws TransactionAlreadyCancelledException when the transaction already
+   *                                             has a cancellation record
+   */
   @Transactional
   public Transaction cancel(UUID transactionId) {
     Transaction transaction = this.transactionRepository.findById(transactionId)
@@ -56,6 +86,13 @@ public class CancelTransactionService {
     return this.transactionRepository.save(cancellation);
   }
 
+  /**
+   * Applies the inverse balance movement for the supplied transaction.
+   *
+   * @param transaction transaction whose ledger effect must be reversed
+   * @throws AccountNotFoundException when an affected source or destination
+   *                                  account no longer exists
+   */
   private void reverse(Transaction transaction) {
     Account account = this.accountRepository.findById(transaction.getAccountId())
       .orElseThrow(AccountNotFoundException::new);

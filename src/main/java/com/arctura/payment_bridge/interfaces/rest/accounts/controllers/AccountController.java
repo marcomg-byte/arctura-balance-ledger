@@ -28,17 +28,40 @@ import com.arctura.payment_bridge.interfaces.rest.exception.request.InvalidAccou
 import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingRequestBodyException;
 import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingRequestBodyPropsException;
 
+/**
+ * REST controller exposing account operations.
+ *
+ * <p>The controller is responsible for HTTP request parsing and request-shape
+ * validation. Domain behavior is delegated to repositories and application
+ * services so that the web layer stays focused on API concerns.</p>
+ */
 @RestController
 @RequestMapping("/accounts")
 public class AccountController {
   private final AccountRepository accountRepository;
   private final DeleteAccountService deleteAccountService;
 
+  /**
+   * Creates the controller with the dependencies required for account API
+   * operations.
+   *
+   * @param accountRepository repository port used for account persistence and
+   *                          lookup
+   * @param deleteAccountService use case service that handles deletion rules
+   */
   public AccountController(AccountRepository accountRepository, DeleteAccountService deleteAccountService) {
     this.accountRepository = accountRepository;
     this.deleteAccountService = deleteAccountService;
   }
 
+  /**
+   * Creates a new account from a JSON request body.
+   *
+   * @param request account creation payload, required by this endpoint
+   * @return serialized account response for the saved account
+   * @throws MissingRequestBodyException when the body is absent
+   * @throws MissingRequestBodyPropsException when required fields are missing
+   */
   @PostMapping
   public AccountResponse create(@RequestBody(required = false) CreateAccountRequest request) {
     validateCreateRequest(request);
@@ -54,6 +77,14 @@ public class AccountController {
     return AccountResponse.from(this.accountRepository.save(account));
   }
 
+  /**
+   * Finds a single active account by UUID path parameter.
+   *
+   * @param id raw account id path parameter
+   * @return serialized account response
+   * @throws InvalidAccountIdException when the path parameter is not a UUID
+   * @throws AccountNotFoundException when no active account exists for the id
+   */
   @GetMapping("/{id}")
   public AccountResponse findById(@PathVariable String id) {
     UUID accountId = parseAccountId(id);
@@ -63,6 +94,13 @@ public class AccountController {
       .orElseThrow(AccountNotFoundException::new);
   }
 
+  /**
+   * Lists active accounts, optionally filtering by the account holder's given
+   * name.
+   *
+   * @param name optional account holder given-name filter
+   * @return serialized account responses
+   */
   @GetMapping
   public List<AccountResponse> findAll(@RequestParam(required = false) String name) {
     List<Account> accounts = name == null || name.isBlank()
@@ -74,6 +112,17 @@ public class AccountController {
       .toList();
   }
   
+  /**
+   * Replaces the personal information for an active account.
+   *
+   * @param id raw account id path parameter
+   * @param request personal information replacement payload
+   * @return serialized account response after persistence
+   * @throws InvalidAccountIdException when the path parameter is not a UUID
+   * @throws MissingRequestBodyException when the body is absent
+   * @throws MissingRequestBodyPropsException when required fields are missing
+   * @throws AccountNotFoundException when no active account exists for the id
+   */
   @PatchMapping("/{id}/personal-info")
   public AccountResponse updatePersonalInfo(
     @PathVariable String id,
@@ -94,6 +143,14 @@ public class AccountController {
     return AccountResponse.from(this.accountRepository.save(account));
   }
 
+  /**
+   * Soft-deletes an active account.
+   *
+   * @param id raw account id path parameter
+   * @return empty HTTP 204 response when deletion succeeds
+   * @throws InvalidAccountIdException when the path parameter is not a UUID
+   * @throws AccountNotFoundException when no active account exists for the id
+   */
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteById(@PathVariable String id) {
     UUID accountId = parseAccountId(id);
@@ -103,6 +160,13 @@ public class AccountController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * Parses an account id from a URL or query-string value.
+   *
+   * @param id raw id value supplied by the client
+   * @return parsed account UUID
+   * @throws InvalidAccountIdException when the value is not a UUID
+   */
   private UUID parseAccountId(String id) {
     try {
       return UUID.fromString(id);
@@ -111,6 +175,14 @@ public class AccountController {
     }
   }
 
+  /**
+   * Validates required properties for account creation.
+   *
+   * @param request request body to validate
+   * @throws MissingRequestBodyException when the request body is absent
+   * @throws MissingRequestBodyPropsException when required properties are absent
+   *                                         or blank
+   */
   private void validateCreateRequest(CreateAccountRequest request) {
     if (request == null) {
       throw new MissingRequestBodyException();
@@ -133,6 +205,14 @@ public class AccountController {
     throwIfMissingProps(missingProps);
   }
 
+  /**
+   * Validates required properties for personal information updates.
+   *
+   * @param request request body to validate
+   * @throws MissingRequestBodyException when the request body is absent
+   * @throws MissingRequestBodyPropsException when required properties are absent
+   *                                         or blank
+   */
   private void validateUpdateRequest(UpdatePersonalInfoRequest request) {
     if (request == null) {
       throw new MissingRequestBodyException();
@@ -146,12 +226,27 @@ public class AccountController {
     throwIfMissingProps(missingProps);
   }
 
+  /**
+   * Adds a property name to the missing-property list when the supplied string
+   * is null or blank.
+   *
+   * @param missingProps mutable list collecting missing property names
+   * @param value property value to inspect
+   * @param propName property name to report when missing
+   */
   private void addIfBlank(List<String> missingProps, String value, String propName) {
     if (value == null || value.isBlank()) {
       missingProps.add(propName);
     }
   }
 
+  /**
+   * Raises a request validation exception when any required properties are
+   * missing.
+   *
+   * @param missingProps missing request property names
+   * @throws MissingRequestBodyPropsException when the list is not empty
+   */
   private void throwIfMissingProps(List<String> missingProps) {
     if (!missingProps.isEmpty()) {
       throw new MissingRequestBodyPropsException(missingProps.toArray(String[]::new));

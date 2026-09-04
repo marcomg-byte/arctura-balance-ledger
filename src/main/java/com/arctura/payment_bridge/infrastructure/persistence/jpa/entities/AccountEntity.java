@@ -16,6 +16,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
+/**
+ * JPA representation of the accounts table, including persisted balance columns
+ * and soft-deletion metadata.
+ *
+ * <p>This type belongs to the infrastructure layer and should not leak into
+ * domain services. Mapping to and from {@link com.arctura.payment_bridge.domain.account.Account}
+ * is handled by {@link com.arctura.payment_bridge.infrastructure.persistence.jpa.mappers.AccountMapper}.</p>
+ */
 @Entity
 @Table(name = "accounts")
 public class AccountEntity {
@@ -45,7 +53,22 @@ public class AccountEntity {
   @OneToMany(mappedBy = "account")
   private List<TransactionEntity> transactions = new ArrayList<>();
 
+  /**
+   * Constructor required by JPA for entity materialization.
+   */
   protected AccountEntity () {}
+
+  /**
+   * Creates an account entity with all persisted account fields.
+   *
+   * @param id account primary key
+   * @param name account holder given name
+   * @param paternalSurname account holder paternal surname
+   * @param maternalSurname account holder maternal surname
+   * @param balanceAmount persisted balance amount
+   * @param balanceCurrency persisted balance currency
+   * @param deletedAt soft-deletion timestamp, or null for active accounts
+   */
   public AccountEntity(
     UUID id,
     String name,

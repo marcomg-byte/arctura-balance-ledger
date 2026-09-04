@@ -17,6 +17,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * JPA representation of ledger transactions and their account, destination, and
+ * cancellation relationships.
+ *
+ * <p>This entity stores database relationships as lazy JPA associations while
+ * exposing ids to the mapper so the domain transaction can remain persistence
+ * agnostic.</p>
+ */
 @Entity
 @Table(name = "transactions")
 public class TransactionEntity {
@@ -53,8 +61,26 @@ public class TransactionEntity {
   @Column(nullable = false, updatable = false, name = "created_at")
   private LocalDateTime createdAt;
 
+  /**
+   * Constructor required by JPA for entity materialization.
+   */
   protected TransactionEntity() {}
 
+  /**
+   * Creates a transaction entity with all persisted ledger fields and
+   * relationships.
+   *
+   * @param id transaction primary key
+   * @param account source account relationship
+   * @param destinationAccount destination account relationship for transfers
+   * @param cancelledTransaction cancelled transaction relationship for
+   *                             cancellation records
+   * @param type persisted transaction type
+   * @param amount persisted monetary amount
+   * @param currency persisted currency
+   * @param description persisted description
+   * @param createdAt creation timestamp
+   */
   public TransactionEntity(
     UUID id,
     AccountEntity account,

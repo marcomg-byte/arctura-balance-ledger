@@ -6,7 +6,19 @@ import org.slf4j.event.KeyValuePair;
 
 import java.util.List;
 
+/**
+ * Renders SLF4J key-value logging pairs as a JSON object in local log output.
+ *
+ * <p>Values are serialized with simple JSON-compatible formatting so structured
+ * logging calls remain readable in local development output.</p>
+ */
 public class LocalFieldsConverter extends DynamicConverter<ILoggingEvent> {
+  /**
+   * Converts SLF4J key-value pairs from the logging event into a JSON fragment.
+   *
+   * @param event Logback logging event
+   * @return JSON fragment containing structured fields
+   */
   @Override
   public String convert(ILoggingEvent event) {
     List<KeyValuePair> pairs = event.getKeyValuePairs();
@@ -34,6 +46,12 @@ public class LocalFieldsConverter extends DynamicConverter<ILoggingEvent> {
     return json.toString();
   }
 
+  /**
+   * Formats a structured logging value as JSON.
+   *
+   * @param value value supplied through SLF4J key-value logging
+   * @return JSON representation for the value
+   */
   private String formatValue(Object value) {
     if (value == null) {
       return "null";

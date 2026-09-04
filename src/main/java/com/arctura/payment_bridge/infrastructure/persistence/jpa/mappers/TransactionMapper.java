@@ -9,14 +9,34 @@ import com.arctura.payment_bridge.infrastructure.persistence.jpa.entities.Transa
 
 import jakarta.persistence.EntityManager;
 
+/**
+ * Converts transactions between domain aggregates and JPA entities while using
+ * references for related persisted records.
+ *
+ * <p>Relationship fields are resolved through {@link EntityManager#getReference}
+ * to avoid unnecessary database fetches when persisting a transaction that only
+ * needs foreign-key references.</p>
+ */
 @Component
 public class TransactionMapper {
   private final EntityManager entityManager;
 
+  /**
+   * Creates the mapper with the entity manager used to create relationship
+   * references.
+   *
+   * @param entityManager JPA entity manager
+   */
   public TransactionMapper(EntityManager entityManager) {
     this.entityManager = entityManager;
   }
 
+  /**
+   * Converts a domain transaction into a JPA entity ready for persistence.
+   *
+   * @param transaction domain aggregate to convert
+   * @return transaction entity containing persisted values and relationships
+   */
   public TransactionEntity toEntity(Transaction transaction) {
     Money amount = transaction.getAmount();
     AccountEntity account = entityManager.getReference(AccountEntity.class, transaction.getAccountId());
@@ -40,6 +60,12 @@ public class TransactionMapper {
     );
   }
 
+  /**
+   * Converts a JPA transaction entity into a domain aggregate.
+   *
+   * @param entity persisted transaction entity to convert
+   * @return domain transaction aggregate
+   */
   public Transaction toDomain(TransactionEntity entity) {
     Money amount = new Money(entity.getAmount(), entity.getCurrency());
 
