@@ -2,12 +2,12 @@
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-  <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="payment-bridge"/>
+  <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="balance-ledger"/>
   <property name="PID" value="${PID:-}"/>
-  <conversionRule conversionWord="palette" class="com.arctura.payment_bridge.infrastructure.logging.LevelPaletteConverter"/>
-  <conversionRule conversionWord="localMessage" class="com.arctura.payment_bridge.infrastructure.logging.LocalMessageConverter"/>
-  <conversionRule conversionWord="localFields" class="com.arctura.payment_bridge.infrastructure.logging.LocalFieldsConverter"/>
-  <conversionRule conversionWord="localCorrelationId" class="com.arctura.payment_bridge.infrastructure.logging.LocalCorrelationIdConverter"/>
+  <conversionRule conversionWord="palette" class="com.arctura.balance_ledger.infrastructure.logging.LevelPaletteConverter"/>
+  <conversionRule conversionWord="localMessage" class="com.arctura.balance_ledger.infrastructure.logging.LocalMessageConverter"/>
+  <conversionRule conversionWord="localFields" class="com.arctura.balance_ledger.infrastructure.logging.LocalFieldsConverter"/>
+  <conversionRule conversionWord="localCorrelationId" class="com.arctura.balance_ledger.infrastructure.logging.LocalCorrelationIdConverter"/>
 
   <springProfile name="default | local | dev | test">
     <property name="APP_ENV" value="${APP_ENV:-local}"/>
