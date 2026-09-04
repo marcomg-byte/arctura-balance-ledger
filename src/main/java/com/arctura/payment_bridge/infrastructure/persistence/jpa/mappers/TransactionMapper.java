@@ -20,10 +20,14 @@ public class TransactionMapper {
   public TransactionEntity toEntity(Transaction transaction) {
     Money amount = transaction.getAmount();
     AccountEntity account = entityManager.getReference(AccountEntity.class, transaction.getAccountId());
+    AccountEntity destinationAccount = transaction.getDestinationAccountId() == null
+      ? null
+      : entityManager.getReference(AccountEntity.class, transaction.getDestinationAccountId());
 
     return new TransactionEntity(
       transaction.getId(),
       account,
+      destinationAccount,
       transaction.getType(),
       amount.getAmount(),
       amount.getCurrency(),
@@ -38,6 +42,7 @@ public class TransactionMapper {
     return new Transaction(
       entity.getId(),
       entity.getAccountId(),
+      entity.getDestinationAccountId(),
       entity.getType(),
       amount,
       entity.getDescription(),

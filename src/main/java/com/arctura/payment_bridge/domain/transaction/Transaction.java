@@ -8,24 +8,27 @@ import com.arctura.payment_bridge.domain.shared.Money;
 public class Transaction {
   private final UUID id;
   private final UUID accountId;
-  private TransactionType type;
-  private Money amount;
+  private final UUID destinationAccountId;
+  private final TransactionType type;
+  private final Money amount;
   private String description;
   private final LocalDateTime createdAt;
 
   public Transaction(
     UUID id,
     UUID accountId,
+    UUID destinationAccountId,
     TransactionType type,
     Money amount,
     String description
   ) {
-    this(id, accountId, type, amount, description, LocalDateTime.now());
+    this(id, accountId, destinationAccountId, type, amount, description, LocalDateTime.now());
   }
 
   public Transaction(
     UUID id,
     UUID accountId,
+    UUID destinationAccountId,
     TransactionType type,
     Money amount,
     String description,
@@ -51,25 +54,30 @@ public class Transaction {
       throw new DomainValidationException("Transaction creation date is required");
     }
 
+    if (type == TransactionType.TRANSFER) {
+      if (destinationAccountId == null) {
+        throw new DomainValidationException("Destination account id is required for transfers");
+      }
+
+      if (accountId.equals(destinationAccountId)) {
+        throw new DomainValidationException("Transfer source and destination accounts must be different");
+      }
+    }
+
+    if (type != TransactionType.TRANSFER && destinationAccountId != null) {
+      throw new DomainValidationException("Destination account id is only allowed for transfers");
+    }
+
     this.id = id;
     this.accountId = accountId;
+    this.destinationAccountId = destinationAccountId;
     this.type = type;
     this.amount = amount;
     this.description = description;
     this.createdAt = createdAt;
   }
 
-  public void update(TransactionType type, Money amount, String description) {
-    if (type == null) {
-      throw new DomainValidationException("Transaction type is required");
-    }
-
-    if (amount == null) {
-      throw new DomainValidationException("Transaction amount is required");
-    }
-
-    this.type = type;
-    this.amount = amount;
+  public void updateDescription(String description) {
     this.description = description;
   }
 
@@ -79,6 +87,10 @@ public class Transaction {
 
   public UUID getAccountId() {
     return accountId;
+  }
+
+  public UUID getDestinationAccountId() {
+    return this.destinationAccountId;
   }
 
   public TransactionType getType() {
@@ -102,6 +114,7 @@ public class Transaction {
     return "Transaction{" +
         "id='" + id + '\'' +
         ", accountId='" + accountId + '\'' +
+        ", destinationAccountId='" + destinationAccountId + '\'' +
         ", type=" + type +
         ", amount=" + amount +
         ", description='" + description + '\'' +
