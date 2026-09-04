@@ -28,6 +28,10 @@ public class TransactionEntity {
   @JoinColumn(name = "account_id", nullable = false, updatable = false)
   private AccountEntity account;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "destination_account_id")
+  private AccountEntity destinationAccount;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private TransactionType type;
@@ -50,6 +54,7 @@ public class TransactionEntity {
   public TransactionEntity(
     UUID id,
     AccountEntity account,
+    AccountEntity destinationAccount,
     TransactionType type,
     BigDecimal amount,
     Currency currency,
@@ -58,6 +63,7 @@ public class TransactionEntity {
   ) {
     this.id = id;
     this.account = account;
+    this.destinationAccount = destinationAccount;
     this.type = type;
     this.amount = amount;
     this.currency = currency;
@@ -71,6 +77,10 @@ public class TransactionEntity {
 
   public UUID getAccountId() {
     return account.getId();
+  }
+
+  public UUID getDestinationAccountId() {
+    return destinationAccount == null ? null : destinationAccount.getId();
   }
 
   public TransactionType getType() {

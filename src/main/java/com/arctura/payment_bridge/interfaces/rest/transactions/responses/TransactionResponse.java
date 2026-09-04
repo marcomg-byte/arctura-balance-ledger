@@ -12,6 +12,7 @@ import com.arctura.payment_bridge.domain.transaction.TransactionType;
 public record TransactionResponse(
   UUID id,
   UUID accountId,
+  UUID destinationAccountId,
   TransactionType type,
   BigDecimal amount,
   Currency currency,
@@ -24,6 +25,7 @@ public record TransactionResponse(
     return new TransactionResponse(
       transaction.getId(),
       transaction.getAccountId(),
+      transaction.getDestinationAccountId(),
       transaction.getType(),
       amount.getAmount(),
       amount.getCurrency(),

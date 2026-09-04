@@ -289,9 +289,6 @@ curl http://localhost:8080/transactions/7f9c1b66-9c2c-48d2-9e6f-12af5d4a3a98
 
 ```json
 {
-  "type": "EXPENSE",
-  "amount": 50.00,
-  "currency": "MXN",
   "description": "Updated description"
 }
 ```

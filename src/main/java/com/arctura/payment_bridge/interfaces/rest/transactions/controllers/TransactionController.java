@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.arctura.payment_bridge.application.transactions.RecordTransactionCommand;
+import com.arctura.payment_bridge.application.transactions.RecordTransactionService;
 import com.arctura.payment_bridge.domain.account.AccountRepository;
 import com.arctura.payment_bridge.domain.exception.AccountNotFoundException;
 import com.arctura.payment_bridge.domain.exception.TransactionNotFoundException;
@@ -28,35 +30,40 @@ import com.arctura.payment_bridge.interfaces.rest.exception.request.InvalidAccou
 import com.arctura.payment_bridge.interfaces.rest.exception.request.InvalidTransactionIdException;
 import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingRequestBodyException;
 import com.arctura.payment_bridge.interfaces.rest.exception.request.MissingRequestBodyPropsException;
+import com.arctura.payment_bridge.interfaces.rest.exception.request.ReadOnlyRequestBodyPropsException;
 
 @RestController
 @RequestMapping("/transactions")
 public class TransactionController {
   private final TransactionRepository transactionRepository;
   private final AccountRepository accountRepository;
+  private final RecordTransactionService recordTransactionService;
 
   public TransactionController(
     TransactionRepository transactionRepository,
-    AccountRepository accountRepository
+    AccountRepository accountRepository,
+    RecordTransactionService recordTransactionService
   ) {
     this.transactionRepository = transactionRepository;
     this.accountRepository = accountRepository;
+    this.recordTransactionService = recordTransactionService;
   }
 
   @PostMapping
   public TransactionResponse create(@RequestBody(required = false) CreateTransactionRequest request) {
     validateCreateRequest(request);
-    ensureAccountExists(request.accountId());
 
-    Transaction transaction = new Transaction(
-      UUID.randomUUID(),
-      request.accountId(),
-      request.type(),
-      new Money(request.amount(), request.currency()),
-      request.description()
+    Transaction transaction = this.recordTransactionService.record(
+      new RecordTransactionCommand(
+        request.accountId(),
+        request.destinationAccountId(),
+        request.type(),
+        new Money(request.amount(), request.currency()),
+        request.description()
+      )
     );
 
-    return TransactionResponse.from(this.transactionRepository.save(transaction));
+    return TransactionResponse.from(transaction);
   }
 
   @GetMapping("/{id}")
@@ -98,11 +105,7 @@ public class TransactionController {
     Transaction transaction = this.transactionRepository.findById(transactionId)
       .orElseThrow(TransactionNotFoundException::new);
 
-    transaction.update(
-      request.type(),
-      new Money(request.amount(), request.currency()),
-      request.description()
-    );
+    transaction.updateDescription(request.description());
 
     return TransactionResponse.from(this.transactionRepository.save(transaction));
   }
@@ -172,18 +175,28 @@ public class TransactionController {
       throw new MissingRequestBodyException();
     }
 
+    List<String> readOnlyProps = new ArrayList<>();
+
+    if (request.type() != null) {
+      readOnlyProps.add("type");
+    }
+
+    if (request.amount() != null) {
+      readOnlyProps.add("amount");
+    }
+
+    if (request.currency() != null) {
+      readOnlyProps.add("currency");
+    }
+
+    if (!readOnlyProps.isEmpty()) {
+      throw new ReadOnlyRequestBodyPropsException(readOnlyProps.toArray(String[]::new));
+    }
+
     List<String> missingProps = new ArrayList<>();
 
-    if (request.type() == null) {
-      missingProps.add("type");
-    }
-
-    if (request.amount() == null) {
-      missingProps.add("amount");
-    }
-
-    if (request.currency() == null) {
-      missingProps.add("currency");
+    if (request.description() == null) {
+      missingProps.add("description");
     }
 
     throwIfMissingProps(missingProps);

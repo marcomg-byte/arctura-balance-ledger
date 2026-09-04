@@ -13,7 +13,10 @@ import com.arctura.payment_bridge.infrastructure.persistence.jpa.entities.Transa
 import com.arctura.payment_bridge.infrastructure.persistence.jpa.mappers.TransactionMapper;
 
 interface SpringDataTransactionRepository extends JpaRepository<TransactionEntity, UUID> {
-  List<TransactionEntity> findByAccount_Id(UUID accountId);
+  List<TransactionEntity> findByAccount_IdOrDestinationAccount_Id(
+    UUID accountId,
+    UUID destinationAccountId
+  );
 }
 
 @Repository
@@ -49,7 +52,7 @@ public class JpaTransactionRepository implements TransactionRepository {
 
   @Override
   public List<Transaction> findByAccountId(UUID accountId) {
-    return repository.findByAccount_Id(accountId)
+    return repository.findByAccount_IdOrDestinationAccount_Id(accountId, accountId)
       .stream()
       .map(mapper::toDomain)
       .toList();
