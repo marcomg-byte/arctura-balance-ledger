@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: payment_bridge_postgres
+    container_name: balance_ledger_postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - payment_bridge_postgres_data:/var/lib/postgresql/data
+      - balance_ledger_postgres_data:/var/lib/postgresql/data
 
 volumes:
-  payment_bridge_postgres_data:
+  balance_ledger_postgres_data:

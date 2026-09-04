@@ -1,6 +1,6 @@
-# Payment Bridge
+# Balance Ledger
 
-Payment Bridge is a Spring Boot REST API for managing accounts and immutable
+Balance Ledger is a Spring Boot REST API for managing accounts and immutable
 financial ledger transactions. It supports account creation and soft deletion,
 income and expense transactions, transfers between accounts, debt collection,
 and transaction cancellation through compensating ledger entries.
@@ -36,16 +36,16 @@ The application is organized around these layers:
 - `interfaces`: external entry points, currently REST controllers, request DTOs,
   response DTOs, and centralized error handling.
 
-`PaymentBridgeApplication` is located in the root package
-`com.arctura.payment_bridge`, so Spring Boot automatically scans the
+`BalanceLedgerApplication` is located in the root package
+`com.arctura.balance_ledger`, so Spring Boot automatically scans the
 application, domain, infrastructure, and interfaces subpackages. No custom
 `@ComponentScan` is required.
 
 ## Project Structure
 
 ```text
-src/main/java/com/arctura/payment_bridge
-├── PaymentBridgeApplication.java
+src/main/java/com/arctura/balance_ledger
+├── BalanceLedgerApplication.java
 ├── application
 │   ├── accounts
 │   │   └── DeleteAccountService.java
@@ -226,12 +226,12 @@ Local database values are read from environment variables, with optional `.env`
 support enabled for local development.
 
 ```properties
-spring.application.name=payment_bridge
+spring.application.name=balance_ledger
 spring.config.import=optional:file:.env[.properties]
 
-spring.datasource.url=jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:payment_bridge}
-spring.datasource.username=${DB_USERNAME:${POSTGRES_USER:payment_bridge}}
-spring.datasource.password=${DB_PASSWORD:${POSTGRES_PASS:payment_bridge}}
+spring.datasource.url=jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:balance_ledger}
+spring.datasource.username=${DB_USERNAME:${POSTGRES_USER:balance_ledger}}
+spring.datasource.password=${DB_PASSWORD:${POSTGRES_PASS:balance_ledger}}
 
 spring.flyway.enabled=true
 spring.flyway.locations=classpath:db/migration
@@ -244,8 +244,8 @@ spring.jpa.open-in-view=false
 Create a local `.env` file before starting PostgreSQL:
 
 ```properties
-POSTGRES_DB=payment_bridge
-POSTGRES_USER=payment_bridge
+POSTGRES_DB=balance_ledger
+POSTGRES_USER=balance_ledger
 POSTGRES_PASS=change_me
 ```
 

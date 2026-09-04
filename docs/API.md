@@ -1,6 +1,6 @@
-# Payment Bridge API
+# Balance Ledger API
 
-Payment Bridge exposes a JSON REST API for accounts and ledger transactions.
+Balance Ledger exposes a JSON REST API for accounts and ledger transactions.
 Examples assume the application is running locally:
 
 ```text
