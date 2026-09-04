@@ -318,6 +318,40 @@ spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.open-in-view=false
 ```
 
+## Logging
+
+The app uses `logstash-logback-encoder` with two console formats:
+
+- `default`, `local`, `dev`, and `test` profiles use colored, human-readable logs.
+- `prod`, `cloud`, and `staging` profiles emit one structured JSON object per line for cloud log ingestion.
+  These cloud-oriented profiles also disable the Spring Boot banner and ANSI
+  colors so application stdout stays machine-readable.
+
+Local development can run without an explicit profile:
+
+```bash
+./gradlew bootRun
+```
+
+Cloud-style JSON logs can be enabled with:
+
+```bash
+SPRING_PROFILES_ACTIVE=prod APP_ENV=prod ./gradlew bootRun
+```
+
+For local `.env` development, keep ANSI color enabled and Spring debug mode off
+unless you explicitly need the framework condition report:
+
+```properties
+spring.profiles.active=local
+spring.output.ansi.enabled=always
+debug=false
+APP_ENV=development
+```
+
+Application logs use SLF4J key-value pairs, and the `X-Correlation-Id` header is
+stored in MDC so every request log and error log includes `correlationId`.
+
 Create a local `.env` file before starting PostgreSQL:
 
 ```properties
