@@ -1,4 +1,5 @@
 package com.arctura.payment_bridge.domain.account;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.arctura.payment_bridge.domain.exception.DomainValidationException;
@@ -10,8 +11,20 @@ public class Account {
   private String maternalSurname;
   private UUID id;
   private Balance balance;
+  private LocalDateTime deletedAt;
 
   public Account(String name, String paternalSurname, String maternalSurname, UUID id, Balance balance) {
+    this(name, paternalSurname, maternalSurname, id, balance, null);
+  }
+
+  public Account(
+    String name,
+    String paternalSurname,
+    String maternalSurname,
+    UUID id,
+    Balance balance,
+    LocalDateTime deletedAt
+  ) {
     if (id == null) {
       throw new DomainValidationException("Account id is required");
     }
@@ -25,6 +38,7 @@ public class Account {
     this.paternalSurname = paternalSurname;
     this.maternalSurname = maternalSurname;
     this.id = id;
+    this.deletedAt = deletedAt;
   }
 
   public void increaseBalance(Money amount) {
@@ -53,6 +67,20 @@ public class Account {
 
   public UUID getId() {
     return id;
+  }
+
+  public LocalDateTime getDeletedAt() {
+    return this.deletedAt;
+  }
+
+  public boolean isDeleted() {
+    return this.deletedAt != null;
+  }
+
+  public void delete() {
+    if (this.deletedAt == null) {
+      this.deletedAt = LocalDateTime.now();
+    }
   }
 
   public void updatePersonalInfo(String name, String paternalSurname, String maternalSurname) {

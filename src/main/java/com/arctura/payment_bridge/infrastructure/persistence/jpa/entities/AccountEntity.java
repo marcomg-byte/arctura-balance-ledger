@@ -3,6 +3,7 @@ package com.arctura.payment_bridge.infrastructure.persistence.jpa.entities;
 import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.arctura.payment_bridge.domain.shared.Currency;
@@ -38,6 +39,9 @@ public class AccountEntity {
   @Column(nullable = false, name = "balance_currency")
   private Currency balanceCurrency;
 
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
+
   @OneToMany(mappedBy = "account")
   private List<TransactionEntity> transactions = new ArrayList<>();
 
@@ -48,7 +52,8 @@ public class AccountEntity {
     String paternalSurname,
     String maternalSurname,
     BigDecimal balanceAmount,
-    Currency balanceCurrency
+    Currency balanceCurrency,
+    LocalDateTime deletedAt
   ) {
     this.id = id;
     this.name = name;
@@ -56,6 +61,7 @@ public class AccountEntity {
     this.maternalSurname = maternalSurname;
     this.balanceAmount = balanceAmount;
     this.balanceCurrency = balanceCurrency;
+    this.deletedAt = deletedAt;
   }
 
   public UUID getId() {
@@ -100,6 +106,14 @@ public class AccountEntity {
 
   public void setBalanceCurrency(Currency balanceCurrency) {
     this.balanceCurrency = balanceCurrency;
+  }
+
+  public LocalDateTime getDeletedAt() {
+    return this.deletedAt;
+  }
+
+  public void setDeletedAt(LocalDateTime deletedAt) {
+    this.deletedAt = deletedAt;
   }
 
   public List<TransactionEntity> getTransactions() {

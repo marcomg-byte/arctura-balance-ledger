@@ -2,6 +2,7 @@ package com.arctura.payment_bridge.interfaces.rest.exception;
 
 import com.arctura.payment_bridge.domain.exception.DomainException;
 import com.arctura.payment_bridge.domain.exception.InsufficientFundsException;
+import com.arctura.payment_bridge.domain.exception.TransactionAlreadyCancelledException;
 import com.arctura.payment_bridge.domain.exception.TransactionNotFoundException;
 import com.arctura.payment_bridge.interfaces.rest.error.ErrorResponse;
 import com.arctura.payment_bridge.interfaces.rest.exception.request.RequestException;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -152,12 +154,42 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(response, status);
   }
 
+  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+    HttpRequestMethodNotSupportedException exception,
+    HttpServletRequest request
+  ) {
+    HttpStatus status = HttpStatus.METHOD_NOT_ALLOWED;
+    String correlationId = request.getHeader(CORRELATION_HEADER);
+
+    log.atInfo()
+      .addKeyValue("path", request.getRequestURI())
+      .addKeyValue("method", request.getMethod())
+      .addKeyValue("errorCode", "METHOD_NOT_ALLOWED")
+      .log("HTTP method not allowed");
+
+    ErrorResponse response = new ErrorResponse(
+      Instant.now(),
+      status.value(),
+      status.getReasonPhrase(),
+      exception.getMessage(),
+      request.getRequestURI(),
+      "METHOD_NOT_ALLOWED",
+      correlationId
+    );
+
+    return new ResponseEntity<>(response, status);
+  }
+
   private HttpStatus mapDomainStatus(DomainException exception) {
     if (exception instanceof AccountNotFoundException || exception instanceof TransactionNotFoundException) {
         return HttpStatus.NOT_FOUND;
     }
 
-    if (exception instanceof InsufficientFundsException) {
+    if (
+      exception instanceof InsufficientFundsException ||
+      exception instanceof TransactionAlreadyCancelledException
+    ) {
         return HttpStatus.CONFLICT;
     }
 

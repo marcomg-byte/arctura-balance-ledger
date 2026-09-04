@@ -23,11 +23,15 @@ public class TransactionMapper {
     AccountEntity destinationAccount = transaction.getDestinationAccountId() == null
       ? null
       : entityManager.getReference(AccountEntity.class, transaction.getDestinationAccountId());
+    TransactionEntity cancelledTransaction = transaction.getCancelledTransactionId() == null
+      ? null
+      : entityManager.getReference(TransactionEntity.class, transaction.getCancelledTransactionId());
 
     return new TransactionEntity(
       transaction.getId(),
       account,
       destinationAccount,
+      cancelledTransaction,
       transaction.getType(),
       amount.getAmount(),
       amount.getCurrency(),
@@ -43,6 +47,7 @@ public class TransactionMapper {
       entity.getId(),
       entity.getAccountId(),
       entity.getDestinationAccountId(),
+      entity.getCancelledTransactionId(),
       entity.getType(),
       amount,
       entity.getDescription(),

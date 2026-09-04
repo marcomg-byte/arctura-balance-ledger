@@ -9,6 +9,7 @@ public class Transaction {
   private final UUID id;
   private final UUID accountId;
   private final UUID destinationAccountId;
+  private final UUID cancelledTransactionId;
   private final TransactionType type;
   private final Money amount;
   private String description;
@@ -29,6 +30,31 @@ public class Transaction {
     UUID id,
     UUID accountId,
     UUID destinationAccountId,
+    UUID cancelledTransactionId,
+    TransactionType type,
+    Money amount,
+    String description
+  ) {
+    this(id, accountId, destinationAccountId, cancelledTransactionId, type, amount, description, LocalDateTime.now());
+  }
+
+  public Transaction(
+    UUID id,
+    UUID accountId,
+    UUID destinationAccountId,
+    TransactionType type,
+    Money amount,
+    String description,
+    LocalDateTime createdAt
+  ) {
+    this(id, accountId, destinationAccountId, null, type, amount, description, createdAt);
+  }
+
+  public Transaction(
+    UUID id,
+    UUID accountId,
+    UUID destinationAccountId,
+    UUID cancelledTransactionId,
     TransactionType type,
     Money amount,
     String description,
@@ -64,13 +90,32 @@ public class Transaction {
       }
     }
 
-    if (type != TransactionType.TRANSFER && destinationAccountId != null) {
-      throw new DomainValidationException("Destination account id is only allowed for transfers");
+    if (type == TransactionType.CANCEL) {
+      if (cancelledTransactionId == null) {
+        throw new DomainValidationException("Cancelled transaction id is required for cancel transactions");
+      }
+
+      if (id.equals(cancelledTransactionId)) {
+        throw new DomainValidationException("Cancel transaction cannot reference itself");
+      }
+
+      if (destinationAccountId != null && accountId.equals(destinationAccountId)) {
+        throw new DomainValidationException("Cancel source and destination accounts must be different");
+      }
+    }
+
+    if (type != TransactionType.CANCEL && cancelledTransactionId != null) {
+      throw new DomainValidationException("Cancelled transaction id is only allowed for cancel transactions");
+    }
+
+    if (type != TransactionType.TRANSFER && type != TransactionType.CANCEL && destinationAccountId != null) {
+      throw new DomainValidationException("Destination account id is only allowed for transfers and transfer cancellations");
     }
 
     this.id = id;
     this.accountId = accountId;
     this.destinationAccountId = destinationAccountId;
+    this.cancelledTransactionId = cancelledTransactionId;
     this.type = type;
     this.amount = amount;
     this.description = description;
@@ -91,6 +136,10 @@ public class Transaction {
 
   public UUID getDestinationAccountId() {
     return this.destinationAccountId;
+  }
+
+  public UUID getCancelledTransactionId() {
+    return this.cancelledTransactionId;
   }
 
   public TransactionType getType() {
@@ -115,6 +164,7 @@ public class Transaction {
         "id='" + id + '\'' +
         ", accountId='" + accountId + '\'' +
         ", destinationAccountId='" + destinationAccountId + '\'' +
+        ", cancelledTransactionId='" + cancelledTransactionId + '\'' +
         ", type=" + type +
         ", amount=" + amount +
         ", description='" + description + '\'' +

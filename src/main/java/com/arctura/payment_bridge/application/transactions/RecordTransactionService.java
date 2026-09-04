@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.arctura.payment_bridge.domain.account.Account;
 import com.arctura.payment_bridge.domain.account.AccountRepository;
 import com.arctura.payment_bridge.domain.exception.AccountNotFoundException;
+import com.arctura.payment_bridge.domain.exception.DomainValidationException;
 import com.arctura.payment_bridge.domain.transaction.Transaction;
 import com.arctura.payment_bridge.domain.transaction.TransactionRepository;
 import com.arctura.payment_bridge.domain.transaction.TransactionType;
@@ -27,6 +28,10 @@ public class RecordTransactionService {
 
   @Transactional
   public Transaction record(RecordTransactionCommand command) {
+    if (command.type() == TransactionType.CANCEL) {
+      throw new DomainValidationException("Cancel transactions can only be created by cancelling an existing transaction");
+    }
+
     Account account = accountRepository.findById(command.accountId())
       .orElseThrow(AccountNotFoundException::new);
     

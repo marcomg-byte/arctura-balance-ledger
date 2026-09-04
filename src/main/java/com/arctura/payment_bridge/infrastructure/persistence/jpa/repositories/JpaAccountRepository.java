@@ -13,7 +13,10 @@ import com.arctura.payment_bridge.infrastructure.persistence.jpa.entities.Accoun
 import com.arctura.payment_bridge.infrastructure.persistence.jpa.mappers.AccountMapper;
 
 interface SpringDataAccountRepository extends JpaRepository<AccountEntity, UUID> {
-  List<AccountEntity> findByName(String name);
+  Optional<AccountEntity> findByIdAndDeletedAtIsNull(UUID id);
+  List<AccountEntity> findByDeletedAtIsNull();
+  List<AccountEntity> findByNameAndDeletedAtIsNull(String name);
+  boolean existsByIdAndDeletedAtIsNull(UUID id);
 }
 
 @Repository
@@ -33,12 +36,12 @@ public class JpaAccountRepository implements AccountRepository {
 
   @Override
   public Optional<Account> findById(UUID id) {
-    return repository.findById(id).map(this.mapper::toDomain);
+    return repository.findByIdAndDeletedAtIsNull(id).map(this.mapper::toDomain);
   }
 
   @Override
   public List<Account> findAll() {
-    return repository.findAll()
+    return repository.findByDeletedAtIsNull()
       .stream()
       .map(this.mapper::toDomain)
       .toList();
@@ -46,17 +49,20 @@ public class JpaAccountRepository implements AccountRepository {
 
   @Override
   public boolean existsById(UUID id) {
-    return repository.existsById(id);
+    return repository.existsByIdAndDeletedAtIsNull(id);
   }
 
   @Override
   public void deleteById(UUID id) {
-    repository.deleteById(id);
+    repository.findById(id).ifPresent(account -> {
+      account.setDeletedAt(java.time.LocalDateTime.now());
+      repository.save(account);
+    });
   }
 
   @Override
   public List<Account> findByName(String name) {
-    return repository.findByName(name)
+    return repository.findByNameAndDeletedAtIsNull(name)
       .stream()
       .map(this.mapper::toDomain)
       .toList();
