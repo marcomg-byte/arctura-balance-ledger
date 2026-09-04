@@ -71,13 +71,12 @@ public class GlobalExceptionHandler {
     HttpServletRequest request
   ) {
     HttpStatus status = mapDomainStatus(exception);
-    log.warn(
-      "Domain exception {} (code={}) at {} - corrId={}",
-      exception.getClass().getSimpleName(),
-      exception.getErrorCode(),
-      request.getRequestURI(),
-      request.getHeader(CORRELATION_HEADER)
-    );
+    log.atWarn()
+      .addKeyValue("exceptionType", exception.getClass().getSimpleName())
+      .addKeyValue("errorCode", exception.getErrorCode())
+      .addKeyValue("path", request.getRequestURI())
+      .log("Domain exception");
+
     return buildResponse(exception, request, status);
   }
 
@@ -111,7 +110,10 @@ public class GlobalExceptionHandler {
         .map(err -> err.getField() + ": " + err.getDefaultMessage())
         .collect(Collectors.joining("; "));
 
-    log.info("Validation failure at {} – {}", request.getRequestURI(), message);
+    log.atInfo()
+      .addKeyValue("path", request.getRequestURI())
+      .addKeyValue("errorCode", "VALIDATION_ERROR")
+      .log("Validation failure: {}", message);
 
     ErrorResponse resp = new ErrorResponse(
         Instant.now(),
@@ -132,7 +134,10 @@ public class GlobalExceptionHandler {
     HttpStatus status = HttpStatus.BAD_REQUEST;
     String correlationId = request.getHeader(CORRELATION_HEADER);
 
-    log.info("Malformed request body at {} - corrId={}", request.getRequestURI(), correlationId);
+    log.atInfo()
+      .addKeyValue("path", request.getRequestURI())
+      .addKeyValue("errorCode", "MALFORMED_REQUEST_BODY")
+      .log("Malformed request body");
 
     ErrorResponse response = new ErrorResponse(
       Instant.now(),
@@ -167,11 +172,11 @@ public class GlobalExceptionHandler {
     HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
     String correlationId = request.getHeader(CORRELATION_HEADER);
 
-    log.error("Unexpected error on {} - corrId={}",
-      request.getRequestURI(),
-      correlationId,
-      exception      
-    );
+    log.atError()
+      .addKeyValue("path", request.getRequestURI())
+      .addKeyValue("errorCode", "UNKNOWN_ERROR")
+      .setCause(exception)
+      .log("Unexpected error");
 
     ErrorResponse response = new ErrorResponse(
       Instant.now(),

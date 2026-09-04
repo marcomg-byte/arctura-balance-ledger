@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="payment-bridge"/>
+  <property name="PID" value="${PID:-}"/>
+  <conversionRule conversionWord="palette" class="com.arctura.payment_bridge.infrastructure.logging.LevelPaletteConverter"/>
+  <conversionRule conversionWord="localMessage" class="com.arctura.payment_bridge.infrastructure.logging.LocalMessageConverter"/>
+  <conversionRule conversionWord="localFields" class="com.arctura.payment_bridge.infrastructure.logging.LocalFieldsConverter"/>
+  <conversionRule conversionWord="localCorrelationId" class="com.arctura.payment_bridge.infrastructure.logging.LocalCorrelationIdConverter"/>
+
+  <springProfile name="default | local | dev | test">
+    <property name="APP_ENV" value="${APP_ENV:-local}"/>
+
+    <appender name="CONSOLE_TEXT" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%clr([%d{HH:mm:ss.SSS}]){faint} %palette([%level]){level} %palette([pid=%property{PID}]){pid} %palette([%logger{36}]){logger} %palette(%localMessage){message} %palette(%localFields){fields} %palette(%localCorrelationId){correlation}%n%wEx</pattern>
+      </encoder>
+    </appender>
+
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="INFO"/>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_TEXT"/>
+    </root>
+  </springProfile>
+
+  <springProfile name="prod | cloud | staging">
+    <property name="APP_ENV" value="${APP_ENV:-prod}"/>
+
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <includeContext>false</includeContext>
+        <customFields>{"service":"${APP_NAME}","environment":"${APP_ENV}"}</customFields>
+        <fieldNames>
+          <level>severity</level>
+          <logger>logger</logger>
+          <thread>thread</thread>
+          <levelValue>[ignore]</levelValue>
+          <version>[ignore]</version>
+        </fieldNames>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="CONSOLE_JSON"/>
+    </root>
+  </springProfile>
+</configuration>
