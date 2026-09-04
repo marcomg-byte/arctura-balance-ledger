@@ -7,6 +7,16 @@ import com.arctura.payment_bridge.domain.account.Account;
 import com.arctura.payment_bridge.domain.shared.Currency;
 import com.arctura.payment_bridge.domain.shared.Money;
 
+/**
+ * API response projection for account details and balance values.
+ *
+ * @param id account identifier
+ * @param name account holder given name
+ * @param paternalSurname account holder paternal surname
+ * @param maternalSurname account holder maternal surname
+ * @param balanceAmount current balance amount
+ * @param balanceCurrency current balance currency
+ */
 public record AccountResponse(
   UUID id,
   String name,
@@ -15,6 +25,12 @@ public record AccountResponse(
   BigDecimal balanceAmount,
   Currency balanceCurrency
 ) {
+  /**
+   * Creates an API response projection from an account aggregate.
+   *
+   * @param account domain account to project
+   * @return account response ready for JSON serialization
+   */
   public static AccountResponse from(Account account) {
     Money balance = account.getBalance().getAmount();
 

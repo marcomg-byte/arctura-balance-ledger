@@ -1,12 +1,16 @@
 # Payment Bridge
 
-Payment Bridge is a Spring Boot REST API for managing accounts and financial
-transactions. The project follows a lightweight Domain-Driven Design approach:
-domain models stay free of framework annotations, while HTTP and persistence
-concerns live in their own infrastructure/interface layers.
+Payment Bridge is a Spring Boot REST API for managing accounts and immutable
+financial ledger transactions. It supports account creation and soft deletion,
+income and expense transactions, transfers between accounts, debt collection,
+and transaction cancellation through compensating ledger entries.
 
-Although the project name includes "bridge", the current application is a
-simple account and transaction API, not an integration bridge between payment
+The project follows a lightweight Domain-Driven Design style. Domain models stay
+free of framework annotations, application services coordinate use cases, and
+HTTP, persistence, logging, and web infrastructure live in their own layers.
+
+Although the project name includes "bridge", the current application is an
+account and transaction ledger API, not an integration bridge between payment
 providers.
 
 ## Current Stack
@@ -15,142 +19,97 @@ providers.
 - Spring Boot 4.1.1
 - Spring Web
 - Spring Data JPA
+- Flyway
+- PostgreSQL for local/runtime persistence
+- H2 for integration tests
 - Gradle
+- Logback with `logstash-logback-encoder`
 
 ## Architecture
 
 The application is organized around these layers:
 
-- `domain`: business entities, value objects, enums, and repository contracts.
-- `infrastructure`: technical implementations, currently JPA persistence.
-- `interfaces`: external entry points, currently REST controllers and DTOs.
+- `domain`: aggregates, value objects, enums, exceptions, and repository ports.
+- `application`: transactional use-case services and commands.
+- `infrastructure`: technical implementations, including JPA persistence,
+  logging converters, and request correlation.
+- `interfaces`: external entry points, currently REST controllers, request DTOs,
+  response DTOs, and centralized error handling.
 
-There is no separate `application` layer yet. Controllers currently call domain
-repository interfaces directly. As the project grows, use cases/services can be
-introduced between the REST layer and the domain repositories.
+`PaymentBridgeApplication` is located in the root package
+`com.arctura.payment_bridge`, so Spring Boot automatically scans the
+application, domain, infrastructure, and interfaces subpackages. No custom
+`@ComponentScan` is required.
 
 ## Project Structure
 
 ```text
 src/main/java/com/arctura/payment_bridge
 ├── PaymentBridgeApplication.java
-│
+├── application
+│   ├── accounts
+│   │   └── DeleteAccountService.java
+│   └── transactions
+│       ├── CancelTransactionService.java
+│       ├── RecordTransactionCommand.java
+│       └── RecordTransactionService.java
 ├── domain
 │   ├── account
 │   │   ├── Account.java
 │   │   ├── AccountRepository.java
 │   │   └── Balance.java
-│   │
+│   ├── exception
 │   ├── shared
 │   │   ├── Currency.java
 │   │   └── Money.java
-│   │
 │   └── transaction
 │       ├── Transaction.java
 │       ├── TransactionRepository.java
 │       └── TransactionType.java
-│
 ├── infrastructure
-│   └── persistence
-│       └── jpa
-│           ├── entities
-│           │   ├── AccountEntity.java
-│           │   └── TransactionEntity.java
-│           │
-│           ├── mappers
-│           │   ├── AccountMapper.java
-│           │   └── TransactionMapper.java
-│           │
-│           └── repositories
-│               ├── JpaAccountRepository.java
-│               └── JpaTransactionRepository.java
-│
+│   ├── logging
+│   ├── persistence
+│   │   └── jpa
+│   │       ├── entities
+│   │       ├── mappers
+│   │       └── repositories
+│   └── web
+│       └── CorrelationIdFilter.java
 └── interfaces
     └── rest
         ├── accounts
-        │   ├── controllers
-        │   │   └── AccountController.java
-        │   ├── requests
-        │   │   ├── CreateAccountRequest.java
-        │   │   └── UpdatePersonalInfoRequest.java
-        │   └── responses
-        │       └── AccountResponse.java
-        │
+        ├── error
+        ├── exception
         └── transactions
-            ├── controllers
-            │   └── TransactionController.java
-            ├── requests
-            │   ├── CreateTransactionRequest.java
-            │   └── UpdateTransactionRequest.java
-            └── responses
-                └── TransactionResponse.java
 ```
-
-`PaymentBridgeApplication` is located in the root package
-`com.arctura.payment_bridge`, so Spring Boot automatically scans the domain,
-infrastructure, and interfaces subpackages. No custom `@ComponentScan` is
-currently required.
 
 ## Domain Model
 
-### Account
+`Account` is the account aggregate. It owns personal information, a current
+`Balance`, and a `deletedAt` timestamp used for soft deletion.
 
-`Account` represents the owner of a balance. It has an identity, personal
-information, and domain behavior for changing the balance.
+`Balance` wraps a `Money` value and enforces overdraft protection for normal
+debit operations. Debt collection is the one domain operation allowed to reduce
+an account balance below zero.
 
-Balance changes are expressed through domain methods:
+`Money` is an immutable value object made of a `BigDecimal amount` and a
+`Currency`. Arithmetic is allowed only between matching currencies.
 
-```java
-account.increaseBalance(amount);
-account.decreaseBalance(amount);
+Supported currencies:
+
+```text
+USD
+MXN
+EUR
 ```
 
-### Balance
+`Transaction` is the ledger aggregate. Transactions are not deleted through the
+API. Corrections are represented as generated `CANCEL` transactions linked to
+the original transaction by `cancelledTransactionId`.
 
-`Balance` wraps a `Money` value and represents the current monetary state of an
-account.
+Supported transaction types:
 
-### Money
-
-`Money` is a shared value object made of:
-
-- `BigDecimal amount`
-- `Currency currency`
-
-`BigDecimal` is used for financial precision.
-
-Example:
-
-```java
-Money amount = new Money(new BigDecimal("100.00"), Currency.MXN);
-```
-
-### Currency
-
-`Currency` represents the monetary unit used by a `Money` value. Current values
-are `USD`, `MXN`, and `EUR`.
-
-### Transaction
-
-`Transaction` represents a financial movement associated with an account. It
-contains:
-
-- a UUID id
-- a UUID account id
-- a transaction type
-- a money amount
-- a description
-- a creation timestamp
-
-New transactions use the constructor that assigns `createdAt` automatically.
-Persisted transactions can be rehydrated through the constructor that accepts
-the original `createdAt` value.
-
-### TransactionType
-
-Current transaction types are:
-
-```java
+```text
 INCOME
 EXPENSE
 TRANSFER
@@ -158,47 +117,47 @@ CANCEL
 DEBT_COLLECTION
 ```
 
-`CANCEL` is generated by `POST /transactions/{transactionId}/cancel` and links
-back to the original transaction being reversed.
+Transaction behavior:
 
-`DEBT_COLLECTION` records a debt collection against the account. It is the only
-transaction type that may reduce an account balance below zero. Regular debit
-operations such as `EXPENSE`, `TRANSFER`, and generated debit-producing
-`CANCEL` transactions return `INSUFFICIENT_FUNDS` when they would create a
-negative balance.
+- `INCOME` increases the source account balance.
+- `EXPENSE` decreases the source account balance and fails if it would overdraw.
+- `TRANSFER` decreases the source account and increases a distinct destination
+  account.
+- `DEBT_COLLECTION` decreases the source account and may create a negative
+  balance.
+- `CANCEL` is generated only by the cancellation endpoint and reverses the
+  original ledger effect.
 
 ## Persistence
 
-Domain classes do not contain JPA annotations. Persistence-specific classes
-live under:
-
-```text
-infrastructure/persistence/jpa
-```
+Domain classes do not contain JPA annotations. Persistence-specific classes live
+under `infrastructure/persistence/jpa`.
 
 The persistence layer contains:
 
 - JPA entities for database mapping.
 - Mapper classes for converting between domain objects and JPA entities.
-- Repository adapters that implement the domain repository interfaces using
-  Spring Data JPA.
+- Repository adapters that implement the domain repository ports using Spring
+  Data JPA.
 
-For example:
+Accounts are soft-deleted with `accounts.deleted_at`. Active account lookups
+exclude soft-deleted rows, while historical transactions remain available.
 
-- `domain/account/Account.java` is the business entity.
-- `infrastructure/persistence/jpa/entities/AccountEntity.java` is the JPA
-  entity.
-- `AccountMapper` converts between both representations.
-- `JpaAccountRepository` implements the domain `AccountRepository`.
+Flyway migrations live under:
+
+```text
+src/main/resources/db/migration
+```
+
+On startup, Hibernate validates the schema with
+`spring.jpa.hibernate.ddl-auto=validate`.
 
 ## REST API
 
-For detailed endpoint usage, request/response examples, and `curl` commands,
-see [docs/API.md](docs/API.md).
+For detailed endpoint usage, request/response examples, and `curl` commands, see
+[docs/API.md](docs/API.md).
 
 ### Accounts
-
-Account IDs are generated by the server as UUID values.
 
 ```text
 POST   /accounts
@@ -209,51 +168,10 @@ PATCH  /accounts/{accountId}/personal-info
 DELETE /accounts/{accountId}
 ```
 
-`POST /accounts` accepts:
-
-```json
-{
-  "name": "Marco",
-  "paternalSurname": "Doe",
-  "maternalSurname": "Smith",
-  "balanceAmount": 1000.00,
-  "balanceCurrency": "MXN"
-}
-```
-
-Example account response:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "Marco",
-  "paternalSurname": "Doe",
-  "maternalSurname": "Smith",
-  "balanceAmount": 1000.00,
-  "balanceCurrency": "MXN"
-}
-```
-
-Example account lookup:
-
-```bash
-curl http://localhost:8080/accounts/550e8400-e29b-41d4-a716-446655440000
-```
-
-`PATCH /accounts/{accountId}/personal-info` accepts:
-
-```json
-{
-  "name": "Marco",
-  "paternalSurname": "Doe",
-  "maternalSurname": "Smith"
-}
-```
+Account IDs are generated by the server. `DELETE /accounts/{accountId}` returns
+`204 No Content` and soft-deletes the account.
 
 ### Transactions
-
-Transaction IDs are generated by the server as UUID values. Transaction create
-requests still need an existing account UUID in `accountId`.
 
 ```text
 POST   /transactions
@@ -264,70 +182,48 @@ PATCH  /transactions/{transactionId}
 POST   /transactions/{transactionId}/cancel
 ```
 
-`POST /transactions` accepts:
+Transaction IDs are generated by the server. `PATCH /transactions/{transactionId}`
+updates only `description`; immutable ledger fields such as `type`, `amount`,
+and `currency` are rejected when present.
+
+## Error Handling
+
+All handled errors use the shared `ErrorResponse` JSON shape:
 
 ```json
 {
-  "accountId": "550e8400-e29b-41d4-a716-446655440000",
-  "type": "INCOME",
-  "amount": 250.00,
-  "currency": "MXN",
-  "description": "Initial deposit"
+  "timestamp": "2026-09-04T07:55:10.123Z",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Account not found",
+  "path": "/accounts/550e8400-e29b-41d4-a716-446655440000",
+  "errorCode": "ACCOUNT_NOT_FOUND",
+  "correlationId": "8a4f3f9a-4f70-4a4e-b8d5-3d4f2cf57c8a"
 }
 ```
 
-Example debt collection request:
+Common error codes include:
 
-```json
-{
-  "accountId": "550e8400-e29b-41d4-a716-446655440000",
-  "type": "DEBT_COLLECTION",
-  "amount": 300.00,
-  "currency": "MXN",
-  "description": "Debt collection"
-}
-```
-
-Example transaction response:
-
-```json
-{
-  "id": "7f9c1b66-9c2c-48d2-9e6f-12af5d4a3a98",
-  "accountId": "550e8400-e29b-41d4-a716-446655440000",
-  "destinationAccountId": null,
-  "cancelledTransactionId": null,
-  "type": "INCOME",
-  "amount": 250.00,
-  "currency": "MXN",
-  "description": "Initial deposit",
-  "createdAt": "2026-08-30T21:45:00.000000"
-}
-```
-
-When a `DEBT_COLLECTION` amount is greater than the current account balance,
-the transaction is still recorded and the account balance becomes negative.
-Other operations that would make the balance negative fail with
-`409 Conflict` and the error code `INSUFFICIENT_FUNDS`.
-
-Example transaction lookup:
-
-```bash
-curl http://localhost:8080/transactions/7f9c1b66-9c2c-48d2-9e6f-12af5d4a3a98
-```
-
-`PATCH /transactions/{transactionId}` accepts:
-
-```json
-{
-  "description": "Updated description"
-}
-```
+- `INVALID_ACCOUNT_ID`
+- `INVALID_TRANSACTION_ID`
+- `MISSING_REQUEST_BODY`
+- `MISSING_REQUEST_BODY_PROPS`
+- `READ_ONLY_REQUEST_BODY_PROPS`
+- `MALFORMED_REQUEST_BODY`
+- `ACCOUNT_NOT_FOUND`
+- `TRANSACTION_NOT_FOUND`
+- `INSUFFICIENT_FUNDS`
+- `TRANSACTION_ALREADY_CANCELLED`
+- `DOMAIN_VALIDATION_ERROR`
+- `PATH_NOT_FOUND`
+- `METHOD_NOT_ALLOWED`
+- `UNKNOWN_ERROR`
 
 ## Configuration
 
 The application connects to PostgreSQL and uses Flyway for schema migrations.
-Local database values are read from environment variables, with `.env` support
-enabled for local development.
+Local database values are read from environment variables, with optional `.env`
+support enabled for local development.
 
 ```properties
 spring.application.name=payment_bridge
@@ -345,14 +241,29 @@ spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.open-in-view=false
 ```
 
+Create a local `.env` file before starting PostgreSQL:
+
+```properties
+POSTGRES_DB=payment_bridge
+POSTGRES_USER=payment_bridge
+POSTGRES_PASS=change_me
+```
+
+Do not wrap `.env` values in quotes. Spring reads quoted values literally when
+importing `.env` as a properties file.
+
 ## Logging
 
-The app uses `logstash-logback-encoder` with two console formats:
+The app propagates an `X-Correlation-Id` header for every request. If the client
+does not send one, `CorrelationIdFilter` generates a UUID, stores it in MDC, and
+writes it back to the response header.
 
-- `default`, `local`, `dev`, and `test` profiles use colored, human-readable logs.
-- `prod`, `cloud`, and `staging` profiles emit one structured JSON object per line for cloud log ingestion.
-  These cloud-oriented profiles also disable the Spring Boot banner and ANSI
-  colors so application stdout stays machine-readable.
+Log output depends on the active profile:
+
+- `default`, `local`, `dev`, and `test` profiles use colored, human-readable
+  local logs.
+- `prod`, `cloud`, and `staging` profiles emit one structured JSON object per
+  line and disable the Spring Boot banner and ANSI output.
 
 Local development can run without an explicit profile:
 
@@ -365,30 +276,6 @@ Cloud-style JSON logs can be enabled with:
 ```bash
 SPRING_PROFILES_ACTIVE=prod APP_ENV=prod ./gradlew bootRun
 ```
-
-For local `.env` development, keep ANSI color enabled and Spring debug mode off
-unless you explicitly need the framework condition report:
-
-```properties
-spring.profiles.active=local
-spring.output.ansi.enabled=always
-debug=false
-APP_ENV=development
-```
-
-Application logs use SLF4J key-value pairs, and the `X-Correlation-Id` header is
-stored in MDC so every request log and error log includes `correlationId`.
-
-Create a local `.env` file before starting PostgreSQL:
-
-```properties
-POSTGRES_DB=payment_bridge
-POSTGRES_USER=payment_bridge
-POSTGRES_PASS=change_me
-```
-
-Do not wrap the `.env` values in quotes. Spring reads quoted values literally
-when importing `.env` as a properties file.
 
 ## Running Locally
 

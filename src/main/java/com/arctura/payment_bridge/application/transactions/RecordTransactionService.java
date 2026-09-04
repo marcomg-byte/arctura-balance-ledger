@@ -13,11 +13,27 @@ import com.arctura.payment_bridge.domain.transaction.Transaction;
 import com.arctura.payment_bridge.domain.transaction.TransactionRepository;
 import com.arctura.payment_bridge.domain.transaction.TransactionType;
 
+/**
+ * Application service for recording financial transactions.
+ *
+ * <p>The service owns the use-case transaction boundary: it creates the domain
+ * transaction, applies the matching account balance changes, and persists all
+ * affected aggregates atomically.</p>
+ */
 @Service
 public class RecordTransactionService {
   private final AccountRepository accountRepository;
   private final TransactionRepository transactionRepository;
 
+  /**
+   * Creates the recording service with the account and transaction repository
+   * ports required by the use case.
+   *
+   * @param accountRepository repository used to load and persist affected
+   *                          accounts
+   * @param transactionRepository repository used to persist the transaction
+   *                              ledger entry
+   */
   public RecordTransactionService(
     AccountRepository accountRepository,
     TransactionRepository transactionRepository
@@ -26,6 +42,17 @@ public class RecordTransactionService {
     this.transactionRepository = transactionRepository;
   }
 
+  /**
+   * Records a transaction and applies its balance impact.
+   *
+   * @param command transaction data accepted by the application layer
+   * @return persisted transaction aggregate
+   * @throws DomainValidationException when attempting to record a cancellation
+   *                                   directly or when transaction invariants
+   *                                   are violated
+   * @throws AccountNotFoundException when the source or transfer destination
+   *                                  account does not exist
+   */
   @Transactional
   public Transaction record(RecordTransactionCommand command) {
     if (command.type() == TransactionType.CANCEL) {

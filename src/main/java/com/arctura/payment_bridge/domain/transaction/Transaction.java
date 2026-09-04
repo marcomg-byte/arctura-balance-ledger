@@ -5,6 +5,15 @@ import java.util.UUID;
 import com.arctura.payment_bridge.domain.exception.DomainValidationException;
 import com.arctura.payment_bridge.domain.shared.Money;
 
+/**
+ * Domain aggregate representing a ledger entry.
+ *
+ * <p>The aggregate enforces the structural invariants for standard operations,
+ * transfers, and cancellation records. In particular, transfer transactions
+ * require a distinct destination account, cancellation transactions require a
+ * reference to the cancelled transaction, and non-cancellation transactions may
+ * not carry cancellation metadata.</p>
+ */
 public class Transaction {
   private final UUID id;
   private final UUID accountId;
@@ -15,6 +24,17 @@ public class Transaction {
   private String description;
   private final LocalDateTime createdAt;
 
+  /**
+   * Creates a transaction with the current time as its creation timestamp.
+   *
+   * @param id transaction identifier
+   * @param accountId source account identifier
+   * @param destinationAccountId destination account for transfers, otherwise
+   *                             null
+   * @param type ledger operation type
+   * @param amount transaction amount
+   * @param description optional transaction description
+   */
   public Transaction(
     UUID id,
     UUID accountId,
@@ -26,6 +46,20 @@ public class Transaction {
     this(id, accountId, destinationAccountId, type, amount, description, LocalDateTime.now());
   }
 
+  /**
+   * Creates a cancellation-aware transaction with the current time as its
+   * creation timestamp.
+   *
+   * @param id transaction identifier
+   * @param accountId source account identifier
+   * @param destinationAccountId destination account for transfer cancellations,
+   *                             otherwise null
+   * @param cancelledTransactionId transaction being cancelled; required for
+   *                               cancellation records
+   * @param type ledger operation type
+   * @param amount transaction amount
+   * @param description optional transaction description
+   */
   public Transaction(
     UUID id,
     UUID accountId,
@@ -38,6 +72,19 @@ public class Transaction {
     this(id, accountId, destinationAccountId, cancelledTransactionId, type, amount, description, LocalDateTime.now());
   }
 
+  /**
+   * Rehydrates or creates a non-cancellation transaction with an explicit
+   * creation timestamp.
+   *
+   * @param id transaction identifier
+   * @param accountId source account identifier
+   * @param destinationAccountId destination account for transfers, otherwise
+   *                             null
+   * @param type ledger operation type
+   * @param amount transaction amount
+   * @param description optional transaction description
+   * @param createdAt creation timestamp
+   */
   public Transaction(
     UUID id,
     UUID accountId,
@@ -50,6 +97,22 @@ public class Transaction {
     this(id, accountId, destinationAccountId, null, type, amount, description, createdAt);
   }
 
+  /**
+   * Rehydrates or creates a transaction with all persisted relationship fields.
+   *
+   * @param id transaction identifier
+   * @param accountId source account identifier
+   * @param destinationAccountId destination account for transfers or transfer
+   *                             cancellations
+   * @param cancelledTransactionId transaction being cancelled for cancellation
+   *                               records
+   * @param type ledger operation type
+   * @param amount transaction amount
+   * @param description optional transaction description
+   * @param createdAt creation timestamp
+   * @throws DomainValidationException when required fields are missing or the
+   *                                   transaction relationships are invalid
+   */
   public Transaction(
     UUID id,
     UUID accountId,
@@ -122,6 +185,12 @@ public class Transaction {
     this.createdAt = createdAt;
   }
 
+  /**
+   * Replaces the mutable transaction description while preserving all immutable
+   * ledger values.
+   *
+   * @param description replacement description, which may be null
+   */
   public void updateDescription(String description) {
     this.description = description;
   }
@@ -158,6 +227,12 @@ public class Transaction {
     return createdAt;
   }
 
+  /**
+   * Builds a diagnostic string for logs and debugging.
+   *
+   * @return transaction representation including identity, relationships, type,
+   *         amount, description, and creation timestamp
+   */
   @Override
   public String toString() {
     return "Transaction{" +
