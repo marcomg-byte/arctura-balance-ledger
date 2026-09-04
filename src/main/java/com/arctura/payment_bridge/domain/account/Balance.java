@@ -30,6 +30,14 @@ public class Balance {
     return new Balance(this.amount.subtract(money));
   }
 
+  Balance decreaseByAllowingNegative(Money money) {
+    if (money == null) {
+      throw new DomainValidationException("A money value is required");
+    }
+
+    return new Balance(this.amount.subtract(money));
+  }
+
   public Money getAmount() {
     return amount;
   }

@@ -65,6 +65,11 @@ public class RecordTransactionService {
       accountRepository.save(destinationAccount);
     }
 
+    if (command.type() == TransactionType.DEBT_COLLECTION) {
+      account.collectDebt(command.amount());
+      this.accountRepository.save(account);
+    }
+
     return transactionRepository.save(transaction);
   }
 }
