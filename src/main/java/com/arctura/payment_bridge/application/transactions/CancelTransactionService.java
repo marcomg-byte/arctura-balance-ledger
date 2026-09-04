@@ -80,5 +80,10 @@ public class CancelTransactionService {
       this.accountRepository.save(account);
       this.accountRepository.save(destinationAccount);
     }
+
+    if (transaction.getType() == TransactionType.DEBT_COLLECTION) {
+      account.increaseBalance(transaction.getAmount());
+      this.accountRepository.save(account);
+    }
   }
 }

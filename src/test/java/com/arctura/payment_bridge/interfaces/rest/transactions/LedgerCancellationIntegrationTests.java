@@ -120,6 +120,87 @@ class LedgerCancellationIntegrationTests {
     assertBalance(accountId, new BigDecimal("110.00"));
   }
 
+  @Test
+  void expenseThatWouldCreateNegativeBalanceReturnsInsufficientFunds() throws Exception {
+    UUID accountId = createAccount(new BigDecimal("10.00"));
+
+    HttpResponse<String> response = createTransactionResponse(
+      accountId,
+      null,
+      "EXPENSE",
+      new BigDecimal("15.00")
+    );
+
+    assertEquals(409, response.statusCode());
+    assertTrue(response.body().contains("\"errorCode\":\"INSUFFICIENT_FUNDS\""));
+    assertBalance(accountId, new BigDecimal("10.00"));
+  }
+
+  @Test
+  void transferThatWouldCreateNegativeBalanceReturnsInsufficientFunds() throws Exception {
+    UUID originAccountId = createAccount(new BigDecimal("10.00"));
+    UUID destinationAccountId = createAccount(new BigDecimal("0.00"));
+
+    HttpResponse<String> response = createTransactionResponse(
+      originAccountId,
+      destinationAccountId,
+      "TRANSFER",
+      new BigDecimal("15.00")
+    );
+
+    assertEquals(409, response.statusCode());
+    assertTrue(response.body().contains("\"errorCode\":\"INSUFFICIENT_FUNDS\""));
+    assertBalance(originAccountId, new BigDecimal("10.00"));
+    assertBalance(destinationAccountId, new BigDecimal("0.00"));
+  }
+
+  @Test
+  void cancellingIncomeThatWouldCreateNegativeBalanceReturnsInsufficientFunds() throws Exception {
+    UUID accountId = createAccount(new BigDecimal("0.00"));
+    TransactionSnapshot income = createTransaction(accountId, null, "INCOME", new BigDecimal("50.00"));
+    createTransaction(accountId, null, "EXPENSE", new BigDecimal("50.00"));
+
+    HttpResponse<String> response = sendPostWithoutBody("/transactions/" + income.id() + "/cancel");
+
+    assertEquals(409, response.statusCode());
+    assertTrue(response.body().contains("\"errorCode\":\"INSUFFICIENT_FUNDS\""));
+    assertBalance(accountId, new BigDecimal("0.00"));
+    assertNull(findObjectWithFieldValue(sendGet("/transactions").body(), "cancelledTransactionId", income.id().toString()));
+  }
+
+  @Test
+  void debtCollectionCanCreateNegativeBalance() throws Exception {
+    UUID accountId = createAccount(new BigDecimal("10.00"));
+
+    TransactionSnapshot debtCollection = createTransaction(
+      accountId,
+      null,
+      "DEBT_COLLECTION",
+      new BigDecimal("25.00")
+    );
+
+    assertEquals("DEBT_COLLECTION", debtCollection.type());
+    assertBalance(accountId, new BigDecimal("-15.00"));
+  }
+
+  @Test
+  void cancellingDebtCollectionRestoresBalance() throws Exception {
+    UUID accountId = createAccount(new BigDecimal("10.00"));
+    TransactionSnapshot debtCollection = createTransaction(
+      accountId,
+      null,
+      "DEBT_COLLECTION",
+      new BigDecimal("25.00")
+    );
+
+    HttpResponse<String> cancelResponse = sendPostWithoutBody("/transactions/" + debtCollection.id() + "/cancel");
+
+    assertEquals(201, cancelResponse.statusCode());
+    assertEquals("CANCEL", extractString(cancelResponse.body(), "type"));
+    assertBalance(accountId, new BigDecimal("10.00"));
+    assertCancellationWasRecorded(debtCollection);
+  }
+
   private UUID createAccount(BigDecimal balanceAmount) throws Exception {
     String body = """
       {
@@ -143,6 +224,25 @@ class LedgerCancellationIntegrationTests {
     String type,
     BigDecimal amount
   ) throws Exception {
+    HttpResponse<String> response = createTransactionResponse(accountId, destinationAccountId, type, amount);
+
+    assertEquals(200, response.statusCode());
+    return new TransactionSnapshot(
+      UUID.fromString(extractString(response.body(), "id")),
+      UUID.fromString(extractString(response.body(), "accountId")),
+      extractNullableUuid(response.body(), "destinationAccountId"),
+      extractString(response.body(), "type"),
+      extractDecimal(response.body(), "amount"),
+      extractString(response.body(), "currency")
+    );
+  }
+
+  private HttpResponse<String> createTransactionResponse(
+    UUID accountId,
+    UUID destinationAccountId,
+    String type,
+    BigDecimal amount
+  ) throws Exception {
     String destinationAccountJson = destinationAccountId == null
       ? ""
       : "\"destinationAccountId\": \"%s\",".formatted(destinationAccountId);
@@ -157,17 +257,7 @@ class LedgerCancellationIntegrationTests {
       }
       """.formatted(accountId, destinationAccountJson, type, amount);
 
-    HttpResponse<String> response = sendPost("/transactions", body);
-
-    assertEquals(200, response.statusCode());
-    return new TransactionSnapshot(
-      UUID.fromString(extractString(response.body(), "id")),
-      UUID.fromString(extractString(response.body(), "accountId")),
-      extractNullableUuid(response.body(), "destinationAccountId"),
-      extractString(response.body(), "type"),
-      extractDecimal(response.body(), "amount"),
-      extractString(response.body(), "currency")
-    );
+    return sendPost("/transactions", body);
   }
 
   private String assertCancellationWasRecorded(TransactionSnapshot transaction) throws Exception {
@@ -215,7 +305,7 @@ class LedgerCancellationIntegrationTests {
   }
 
   private BigDecimal extractDecimal(String json, String field) {
-    Pattern pattern = Pattern.compile("\"" + field + "\":([0-9.]+)");
+    Pattern pattern = Pattern.compile("\"" + field + "\":(-?[0-9.]+)");
     Matcher matcher = pattern.matcher(json);
 
     if (!matcher.find()) {

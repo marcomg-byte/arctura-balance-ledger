@@ -49,6 +49,10 @@ public class Account {
     this.balance = this.balance.decreaseBy(amount);
   }
 
+  public void collectDebt(Money amount) {
+    this.balance = this.balance.decreaseByAllowingNegative(amount);
+  }
+
   public Balance getBalance() {
     return balance;
   }

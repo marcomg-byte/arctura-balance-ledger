@@ -4,5 +4,6 @@ public enum TransactionType {
   INCOME,
   EXPENSE,
   TRANSFER,
-  CANCEL
+  CANCEL,
+  DEBT_COLLECTION
 }
